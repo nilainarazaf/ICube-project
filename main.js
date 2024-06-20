@@ -41,7 +41,7 @@ const guiParams = {
     edgeOpacity: 1,
 	faceNormals: false,
     vertexNormals: false,
-    color: 0xffffff,
+    color: 0x3137DD,
 	iteration: 1,
 	applyCatmullClark: function() {
         applyCatmullClark(guiParams.iteration);
@@ -51,6 +51,7 @@ const guiParams = {
 ///////////////////////////////////////////////
 // set gui perform
 const gui = new GUI();
+
 
 const file = gui.addFolder( 'file' );
 file.add(guiParams, 'loadFile').name('Load File');

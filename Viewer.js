@@ -231,12 +231,19 @@ export default class Viewer {
 			if(this.#mesh){
 				const cmap = this.#mesh;
 				// console.log(this.#mesh);
+
 				console.log("index = "+intersects[index].faceIndex);
 				cmap.foreach(cmap.face, fId => {
+
+					if(fId)
+					// console.log(cmap.cell(cmap.face, dId));
 					// prendre la correspondance avec face;
+					// console.log(fId);
+					// console.log(cmap.cell(cmap.dart, intersects[index].faceIndex));
 					if(intersects[index].faceIndex == fId){
-						changeColorFace(fId);
-						console.log(fId);
+						// console.log(cmap.cell(cmap.vertex, fId));
+						// console.log("c est un face");
+						// changeColorFace(fId);
 					}
 				}); 
 			} else {

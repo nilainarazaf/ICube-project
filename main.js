@@ -2,7 +2,7 @@
 import CMap0 from './CMapJS/CMap/CMap0.js';
 import * as THREE from './CMapJS/Libs/three.module.js';
 import DataHandler from './DataHandler.js';
-import CatmullClark from './CMapJS/Modeling/Subdivision/Surface/CatmullClark.js';
+import CatmullClark, { catmullClark_inter } from './CMapJS/Modeling/Subdivision/Surface/CatmullClark.js';
 import { GUI } from './lil-gui.module.min.js';
 import Viewer from './Viewer.js';
 
@@ -127,7 +127,7 @@ function applyCatmullClark(iteration){
 	// console.log(dataHandler.mesh);
 
     for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {        
-        CatmullClark(dataHandler.mesh);
+        CatmullClark(dataHandler.mesh, 49, 49);
     }
 	// console.log("DATA MESH AFTER CATMULLCLARK 0");
 	// console.log(dataHandler.mesh);
@@ -215,7 +215,7 @@ function mainloop() {
     render();
     requestAnimationFrame(mainloop);
     // viewer.showVertex(new THREE.Vector3(0, 0, 0));
-    listner();
+    // listner();
 }
 
 mainloop();

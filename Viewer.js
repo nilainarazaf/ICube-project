@@ -17,8 +17,11 @@ export default class Viewer {
 
 	#faceNormals;
 	#vertexNormals;
+	#vertices = [];
 
 	#firstIteration = true;
+	#INTERSECTED;
+	#raycaster = new THREE.Raycaster();
 
 	constructor ( renderer ) {
 		this.#renderer = renderer;
@@ -193,6 +196,26 @@ export default class Viewer {
 		this.render();
 
 	}
+	showVertexAsDots(){
+		if(this.#mesh){
+			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+			console.log(position);
+			this.#mesh.foreach(this.#mesh.vertex, vId => {
+				console.log(vId);
+				this.showVertex(position[this.#mesh.cell(this.#mesh.vertex, vId)]);
+			})
+		}
+	}
+	clearVertexAsDots(){
+		if(this.#vertices){
+			this.#vertices.forEach(vertex => {
+				this.#scene.remove(vertex);
+			});
+		
+			this.#vertices = [];
+		}
+		this.render();
+	}
 
 	showVertex(dot){
 		const geometry = new THREE.SphereGeometry(0.007, 32, 32);
@@ -201,6 +224,7 @@ export default class Viewer {
 		const sphere = new THREE.Mesh(geometry, material);
 		sphere.position.copy(dot);
 
+		this.#vertices.push(sphere);
 		this.#scene.add(sphere);
 		this.render();
 
@@ -219,39 +243,39 @@ export default class Viewer {
 	}
 
 
-	setListner(mousePsoition){
-		const rayCaster = new THREE.Raycaster()
+	// setListner(mousePsoition){
+	// 	const rayCaster = new THREE.Raycaster()
 
-		rayCaster.setFromCamera(mousePsoition, this.#camera);
+	// 	rayCaster.setFromCamera(mousePsoition, this.#camera);
 
-		const intersects = rayCaster.intersectObjects(this.#scene.children);
-		console.log(intersects);
+	// 	const intersects = rayCaster.intersectObjects(this.#scene.children);
+	// 	// console.log(intersects);
 
-		for (let index = 0; index < intersects.length; index++) {
-			if(this.#mesh){
-				const cmap = this.#mesh;
-				// console.log(this.#mesh);
+	// 	for (let index = 0; index < intersects.length; index++) {
+	// 		if(this.#mesh){
+	// 			const cmap = this.#mesh;
+	// 			// console.log(this.#mesh);
 
-				console.log("index = "+intersects[index].faceIndex);
-				cmap.foreach(cmap.face, fId => {
+	// 			console.log("index = "+intersects[index].faceIndex);
+	// 			cmap.foreach(cmap.face, fId => {
 
-					if(fId)
-					// console.log(cmap.cell(cmap.face, dId));
-					// prendre la correspondance avec face;
-					// console.log(fId);
-					// console.log(cmap.cell(cmap.dart, intersects[index].faceIndex));
-					if(intersects[index].faceIndex == fId){
-						// console.log(cmap.cell(cmap.vertex, fId));
-						// console.log("c est un face");
-						// changeColorFace(fId);
-					}
-				}); 
-			} else {
-				console.log("no mesh");
-			}
+	// 				console.log("fid = "+fId)
+	// 				// console.log(cmap.cell(cmap.face, dId));
+	// 				// prendre la correspondance avec face;
+	// 				// console.log(fId);
+	// 				// console.log(cmap.cell(cmap.dart, intersects[index].faceIndex));
+	// 				if(intersects[index].faceIndex == fId){
+	// 					// console.log(cmap.cell(cmap.vertex, fId));
+	// 					// console.log("c est un face");
+	// 					// changeColorFace(fId);
+	// 				}
+	// 			}); 
+	// 		} else {
+	// 			console.log("no mesh");
+	// 		}
 			
-		}
-	}
+	// 	}
+	// }
 
 	changeColorFace(id){
 		if (this.#meshRenderer.faces.mesh) {
@@ -260,6 +284,58 @@ export default class Viewer {
             this.#meshRenderer.faces.mesh.geometry.colorsNeedUpdate = true;
         }
         this.render();
+	}
+
+	setVertexPosition(pointer){
+		this.#raycaster.setFromCamera( pointer, this.#camera );
+
+		const intersects = this.#raycaster.intersectObjects( this.#scene.children, false );
+		
+		let id = 0
+		if ( intersects.length > 0 ) {
+			console.log(intersects);
+			// console.log(intersects[ 0 ].object);
+			let machin = intersects[ id ].object;
+
+			let newColor = new THREE.Color(0xff00ff);
+			// machin.material.color = newColor;
+			machin.geometry.needUpdate = true;
+			console.log(">>______________");
+			console.log(this.#meshRenderer.faces.mesh);
+			// console.log(this.#meshRenderer.edges.mesh);
+			console.log("<<______________");
+			// console.log(this.#meshRenderer);
+			// console.log(machin);
+
+			console.log(intersects[ id ].faceIndex);
+			if( intersects[ id ].faceIndex ){
+				const faceIndex = this.#meshRenderer.faces.mesh.fd[intersects[ id ].faceIndex]
+				machin.geometry.faces[faceIndex].color = newColor;
+				console.log("machin ici");
+				console.log(machin.geometry.faces[faceIndex].color);
+				console.log(machin.geometry.faces[faceIndex]);
+				machin.geometry.colorsNeedUpdate = true;
+			}
+
+
+			if ( this.#mesh != intersects[ 0 ].object ) {
+
+				// if ( this.#INTERSECTED ) this.#INTERSECTED.material.emissive.setHex( this.#INTERSECTED.currentHex );
+
+				// this.#INTERSECTED = intersects[ 0 ].object;
+				// this.#INTERSECTED.currentHex = this.#INTERSECTED.material.emissive.getHex();
+				// this.#INTERSECTED.material.emissive.setHex( 0xff0000 );
+
+			}
+
+		} else {
+
+			if ( this.#INTERSECTED ) this.#INTERSECTED.material.emissive.setHex( this.#INTERSECTED.currentHex );
+
+			this.#INTERSECTED = null;
+
+		}
+		this.render();
 	}
 
 }

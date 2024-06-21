@@ -14,6 +14,7 @@ document.body.appendChild(renderer.domElement);
 
 const dataHandler = new DataHandler();
 const viewer = new Viewer(renderer);
+const mousePsoition = new THREE.Vector2();
 
 ///////////////////////////////////////////////
 // Set size according the window
@@ -40,8 +41,11 @@ const guiParams = {
     faceOpacity: 1,
     edgeOpacity: 1,
 	faceNormals: false,
-    vertexNormals: false,
+    showVertex: false,
     color: 0x3137DD,
+
+    position: 1,
+
 	iteration: 1,
 	applyCatmullClark: function() {
         applyCatmullClark(guiParams.iteration);
@@ -66,11 +70,11 @@ options.add(guiParams, 'faceNormals').onChange( bool => {
         viewer.clearFaceNormals();
     }
 });
-options.add(guiParams, 'vertexNormals').onChange( bool => {
+options.add(guiParams, 'showVertex').onChange( bool => {
     if(bool){
-        viewer.showVertexNormals();
+        viewer.showVertexAsDots();
     } else {
-        viewer.clearVertexNormals();
+        viewer.clearVertexAsDots();
     }
 });
 options.add(guiParams, 'faceOpacity', 0, 1, 0.01).onChange(opacity => {
@@ -81,6 +85,9 @@ options.add(guiParams, 'edgeOpacity', 0, 1, 0.01).onChange(opacity => {
 });
 options.addColor(guiParams, 'color').onChange(color => {
     viewer.setFaceColor(color);
+});
+options.add(guiParams, 'position').onChange(x => {
+    viewer.setXPosition(x);
 });
 
 const catmullClark = gui.addFolder( 'CatmullClark' );
@@ -214,20 +221,22 @@ function mainloop() {
     update();
     render();
     requestAnimationFrame(mainloop);
-    // viewer.showVertex(new THREE.Vector3(0, 0, 0));
+    viewer.showVertex(new THREE.Vector3(0, 0, 0));
     // listner();
 }
 
+function first(){
+    window.addEventListener('mousemove', function(e) {
+        // console.log(mousePsoition.x+", "+mousePsoition.y);
+        mousePsoition.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+	    mousePsoition.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+        viewer.setVertexPosition(mousePsoition);
+    });
+
+    // viewer.setListner(mousePsoition);
+}
+
+first();
 mainloop();
 
 
-function listner(){
-    const mousePsoition = new THREE.Vector2();
-
-    window.addEventListener('mousemove', function(e) {
-        mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1 ;
-        mousePsoition.y = (e.clientY / window.innerHeight) * 2 + 1 ;
-    });
-
-    viewer.setListner(mousePsoition);
-}

@@ -1,4 +1,4 @@
-
+// Import necessary modules
 import { CMap2 } from './CMapJS/CMap/CMap.js';
 import { loadCMap2 } from './CMapJS/IO/SurfaceFormats/CMap2IO.js';
 

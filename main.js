@@ -1,4 +1,4 @@
-// import CMap0 from './CMapJS/CMap/CMap0.js';
+// Import necessary modules
 import CMap0 from './CMapJS/CMap/CMap0.js';
 import * as THREE from './CMapJS/Libs/three.module.js';
 import DataHandler from './DataHandler.js';
@@ -7,17 +7,21 @@ import { GUI } from './lil-gui.module.min.js';
 import Viewer from './Viewer.js';
 
 ///////////////////////////////////////////////
-// Set render
+// Set up the renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Initialize data handler and viewer
 const dataHandler = new DataHandler();
 const viewer = new Viewer(renderer);
 const mousePsoition = new THREE.Vector2();
 
+// vertex edited
+const vertex = new THREE.Vector3();
+
 ///////////////////////////////////////////////
-// Set size according the window
+// Adjust size according to the window
 window.addEventListener('resize', function() {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -25,7 +29,7 @@ window.addEventListener('resize', function() {
 });
 
 ///////////////////////////////////////////////
-// gui for setting parameters on Mesh
+// GUI for setting parameters on the mesh
 const guiParams = {
     loadFile: function() {
         document.getElementById('fileInput').click();
@@ -44,7 +48,7 @@ const guiParams = {
     showVertex: false,
     color: 0x3137DD,
 
-    position: 1,
+    position: 0,
 
 	iteration: 1,
 	applyCatmullClark: function() {
@@ -53,25 +57,26 @@ const guiParams = {
 };
 
 ///////////////////////////////////////////////
-// set gui perform
+// Set up the GUI
 const gui = new GUI();
 
-
-const file = gui.addFolder( 'file' );
+// File
+const file = gui.addFolder('File');
 file.add(guiParams, 'loadFile').name('Load File');
-file.add(guiParams, 'fileName')
+file.add(guiParams, 'fileName');
 file.add(guiParams, 'saveFile').name('Save File');
 
-const options = gui.addFolder( 'Options' );
-options.add(guiParams, 'faceNormals').onChange( bool => {
-    if(bool){
+// Options
+const options = gui.addFolder('Options');
+options.add(guiParams, 'faceNormals').onChange(bool => {
+    if (bool) {
         viewer.showFaceNormals();
     } else {
         viewer.clearFaceNormals();
     }
 });
-options.add(guiParams, 'showVertex').onChange( bool => {
-    if(bool){
+options.add(guiParams, 'showVertex').onChange(bool => {
+    if (bool) {
         viewer.showVertexAsDots();
     } else {
         viewer.clearVertexAsDots();
@@ -86,25 +91,24 @@ options.add(guiParams, 'edgeOpacity', 0, 1, 0.01).onChange(opacity => {
 options.addColor(guiParams, 'color').onChange(color => {
     viewer.setFaceColor(color);
 });
-options.add(guiParams, 'position').onChange(x => {
-    viewer.setXPosition(x);
+options.add(guiParams, 'position', -1, 1, 0.1).onChange(position => {
+    viewer.changeVertexPosition(position);
 });
 
-const catmullClark = gui.addFolder( 'CatmullClark' );
+// CatmullClark
+const catmullClark = gui.addFolder('CatmullClark');
 catmullClark.add(guiParams, 'iteration');
-catmullClark.add(guiParams, 'applyCatmullClark').name('apply');
+catmullClark.add(guiParams, 'applyCatmullClark').name('Apply');
 
 ///////////////////////////////////////////////
-// action on fileInput
+// Handle file input change event
 document.getElementById('fileInput').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (file) {
-        // console.log(`Selected file: ${file.name}`);
         const reader = new FileReader();
         reader.onload = function(e) {
             const content = e.target.result;
             guiParams.content = `File content: ${content}`;
-            // console.log(guiParams.content);
             dataHandler.loadMeshFromString(content);
             viewer.initializeMeshRenderer(dataHandler.mesh);
         };
@@ -113,7 +117,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
 });
 
 ///////////////////////////////////////////////
-// action to saveFile
+// Save file function
 function saveFile() {
     console.log(guiParams);
     const blob = new Blob([guiParams.content], { type: 'text/plain' });
@@ -126,117 +130,91 @@ function saveFile() {
     document.body.removeChild(link);
 }
 
-
 ///////////////////////////////////////////////
-// CatmullClark
-function applyCatmullClark(iteration){
-	// console.log("DATA MESH");
-	// console.log(dataHandler.mesh);
-
-    for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {        
-        CatmullClark(dataHandler.mesh, 49, 49);
+// Apply Catmull-Clark subdivision
+function applyCatmullClark(iteration) {
+    for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {
+        CatmullClark(dataHandler.mesh);
     }
-	// console.log("DATA MESH AFTER CATMULLCLARK 0");
-	// console.log(dataHandler.mesh);
-
-
 
     const cmap = dataHandler.mesh;
     let vertex = cmap.vertex;
 
     const position = cmap.getAttribute(cmap.vertex, "position");
-    // console.log("Position");
-    // console.log(position);
+    const ref = cmap.getAttribute(cmap.vertex, "<refs>");
+    let buff = cmap.getAttribute(cmap.dart, "<emb_1>");
+    buff = cmap.getAttribute(cmap.dart, "<topo_d>");
+    buff = cmap.getAttribute(cmap.dart, "<topo_phi1>");
+    buff = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
+    buff = cmap.getAttribute(cmap.dart, "<topo_phi2>");
+    // console.log(buff);
 
-    const radius = cmap.getAttribute(cmap.vertex, "<refs>");
-    // console.log("<refs>");
-    // console.log(radius);
-
-    let instanceId = cmap.getAttribute(cmap.dart, "<emb_1>");
-    // console.log("<emb_1>");
-    // console.log(instanceId);
-
-    instanceId = cmap.getAttribute(cmap.dart, "<topo_d>");
-    // console.log("<topo_d>");
-    // console.log(instanceId);
-
-    instanceId = cmap.getAttribute(cmap.dart, "<topo_phi1>");
-    // console.log("<topo_phi1>");
-    // console.log(instanceId);
-
-    instanceId = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
-    // console.log("<topo_phi_1>");
-    // console.log(instanceId);
-
-    instanceId = cmap.getAttribute(cmap.dart, "<topo_phi2>");
-    // console.log("<topo_phi2>");
-    // console.log(instanceId);
-
-    // console.log("here your stuff");
-    const stuff = cmap.getAttribute(cmap.dart, "<topo_d>");
-    // console.log(stuff);
-    
-    stuff.forEach(vd => {
-        // console.log("point: "+vd);
-        // console.log("cell: "+cmap.cell(cmap.vertex, vd));
-    });
-
-    cmap.foreach(cmap.face ,fid => {
-        // if(cmap.cell(cmap.face, fid)){
-            // console.log("thing");
-        // }
+    cmap.foreach(cmap.face, fid => {
         const instanceId = cmap.getAttribute(cmap.dart, "<topo_d>");
         const idFace = instanceId[cmap.cell(cmap.vertex, fid)];
         position[idFace];
-        // console.log(idFace);
-        // viewer.showVertex(position[idFace]);
-    }, ); 
+    });
 
     viewer.setMesh(dataHandler.mesh);
     render();
 };
 
 ///////////////////////////////////////////////
-// Show Normals
-function showNormal(noraml){
-    const normal = new THREE.Vector3( 10, 10, 10 );
-    // console.log(dataHandler.mesh);
-    viewer.addLine(null, normal);
+// Show normals function
+function showNormal(normal) {
+    // const normalVec = new THREE.Vector3(10, 10, 10);
+    // viewer.addLine(null, normalVec);
 }
 
 ///////////////////////////////////////////////
-// Things to do on update
+// Update function
 function update() {
-    // console.log("update")
+    // This function can be used to update the scene
 }
 
 ///////////////////////////////////////////////
-// Tings to do on renderer
+// Render function
 function render() {
-
     viewer.render();
 }
 
+///////////////////////////////////////////////
+// Main loop function
 function mainloop() {
     update();
     render();
     requestAnimationFrame(mainloop);
-    viewer.showVertex(new THREE.Vector3(0, 0, 0));
-    // listner();
 }
 
-function first(){
+///////////////////////////////////////////////
+// Initialize mouse movement listener
+function first() {
     window.addEventListener('mousemove', function(e) {
-        // console.log(mousePsoition.x+", "+mousePsoition.y);
-        mousePsoition.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-	    mousePsoition.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
-        viewer.setVertexPosition(mousePsoition);
+        
+        mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mousePsoition.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        
+        const canvasBounds = renderer.domElement.getBoundingClientRect();
+        const x = e.clientX - canvasBounds.left;
+        const y = e.clientY - canvasBounds.top;
+        
+        if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
+            viewer.overShape(mousePsoition);
+        }
     });
+    window.addEventListener('click', function(e) {
+        mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mousePsoition.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
-    // viewer.setListner(mousePsoition);
+        const canvasBounds = renderer.domElement.getBoundingClientRect();
+        const x = e.clientX - canvasBounds.left;
+        const y = e.clientY - canvasBounds.top;
+        
+        if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
+            viewer.selectShape(mousePsoition);
+        }
+    });
 }
 
 first();
 mainloop();
-
-

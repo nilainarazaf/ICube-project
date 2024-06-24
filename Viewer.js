@@ -94,6 +94,18 @@ export default class Viewer {
 		this.#meshRenderer.faces.addTo(this.#scene);
 
 		this.#mesh.addAttribute(this.#mesh.vertex, "transform");
+		this.#mesh.addAttribute(this.#mesh.vertex, "position_init");
+
+		const positionInit = this.#mesh.addAttribute(this.#mesh.vertex, "position_init")
+		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		
+		this.#mesh.foreach(this.#mesh.vertex, vId => {
+			console.log(vId);
+			position[this.#mesh.cell(this.#mesh.vertex, vId)].hasBeenChanged = false;
+			positionInit[this.#mesh.cell(this.#mesh.vertex, vId)] = position[this.#mesh.cell(this.#mesh.vertex, vId)];
+			console.log(positionInit[this.#mesh.cell(this.#mesh.vertex, vId)]);
+		});
+		console.log(this.#mesh.getAttribute(this.#mesh.vertex, "position_init"));
 	}
 
 	// Set the opacity of the mesh faces
@@ -332,24 +344,35 @@ export default class Viewer {
 	}
 
 
-	changeVertexPosition(transform, index){
+	changeVertexPosition(transformVector){
+		console.log(this.#SELECTED.vertexIndex);
+		const index = this.#SELECTED.vertexIndex;
 
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		console.log(this.#mesh.getAttribute(this.#mesh.vertex, "transform"));
-		const posCell = position[this.#mesh.cell(this.#mesh.vertex, this.#SELECTED.vertexIndex)];
+		const positionInit = this.#mesh.getAttribute(this.#mesh.vertex, "position_init");
+		const transform = this.#mesh.getAttribute(this.#mesh.vertex, "transform");
+		// const posCell = position[this.#mesh.cell(this.#mesh.vertex, this.#SELECTED.vertexIndex)];
 
-		this.#transformValue = new THREE.Vector3();
-		if(!this.#transformHasBeen){
-			this.#transformValue = Object.assign({}, posCell);
-			this.#transformHasBeen = true;
-		}
-		if(this.#transformValue){
-			posCell.addScalar(0.5);
-		}
+		// this.#transformValue = new THREE.Vector3();
+		const positionId = this.#mesh.cell(this.#mesh.vertex, index)
+		console.log("pos:"+positionId);
+		transform[positionId] = transformVector;
+		console.log(transform);
+		console.log(positionInit)
+		// position[positionId].addVectors(transform[positionId], positionInit[positionId]);
+
+
+		// if(!this.#transformHasBeen){
+		// 	this.#transformValue = Object.assign({}, posCell);
+		// 	this.#transformHasBeen = true;
+		// }
+		// if(this.#transformValue){
+		// 	posCell.addScalar(0.5);
+		// }
 		
-		console.log(posCell);
-		console.log(this.#transformValue);
-		console.log(index);
+		// console.log(posCell);
+		// console.log(this.#transformValue);
+		// console.log(index);
 
 
 		this.setMesh(this.#mesh);

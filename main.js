@@ -48,7 +48,13 @@ const guiParams = {
     showVertex: false,
     color: 0x3137DD,
 
-    position: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+    change: function(){
+        const vertex = new THREE.Vector3(this.positionX, this.positionY, this.positionZ);
+        this.changeVertexPosition(vertex);
+    },
 
 	iteration: 1,
 	applyCatmullClark: function() {
@@ -91,9 +97,19 @@ options.add(guiParams, 'edgeOpacity', 0, 1, 0.01).onChange(opacity => {
 options.addColor(guiParams, 'color').onChange(color => {
     viewer.setFaceColor(color);
 });
-options.add(guiParams, 'position', -1, 1, 0.1).onChange(position => {
-    viewer.changeVertexPosition(position);
+
+const guiVertex = gui.addFolder('Vertex');
+guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).onChange(x => {
+    viewer.changeVertexPosition(x);
 });
+guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).onChange(y => {
+    viewer.changeVertexPosition(y);
+});
+guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange(z => {
+    viewer.changeVertexPosition(z);
+});
+
+guiVertex.add(guiParams, 'change').name('change');
 
 // CatmullClark
 const catmullClark = gui.addFolder('CatmullClark');

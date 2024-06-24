@@ -21,7 +21,7 @@ export default class Viewer {
 
 	#firstIteration = true; // Flag for the first iteration
 	#INTERSECTED; // Variable to store the intersected object
-	#INTERSECTED_FACE;
+
 	#SELECTED;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
@@ -29,6 +29,9 @@ export default class Viewer {
 	#faceHoverColor;
 
 	#vertexHover;
+
+	#transformValue;
+	#transformHasBeen = false;
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -89,6 +92,8 @@ export default class Viewer {
 
 		this.#meshRenderer.faces.create();
 		this.#meshRenderer.faces.addTo(this.#scene);
+
+		this.#mesh.addAttribute(this.#mesh.vertex, "transform");
 	}
 
 	// Set the opacity of the mesh faces
@@ -215,7 +220,7 @@ export default class Viewer {
 			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 			// console.log(position);
 			this.#mesh.foreach(this.#mesh.vertex, vId => {
-				console.log(vId);
+				// console.log(vId);
 				this.showVertex(position[this.#mesh.cell(this.#mesh.vertex, vId)], vId);
 			});
 		}
@@ -235,7 +240,7 @@ export default class Viewer {
 
 	// Show a single vertex as a dot
 	showVertex(dot, index) {
-		const geometry = new THREE.SphereGeometry(0.07, 32, 32);
+		const geometry = new THREE.SphereGeometry(0.01, 32, 32);
 		const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 
 		const sphere = new THREE.Mesh(geometry, material);
@@ -327,19 +332,30 @@ export default class Viewer {
 	}
 
 
-	changeVertexPosition(position){
-		// console.log(this.#SELECTED.position);
-		
-		// this.#mesh = 
-		position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		// console.log(this.#SELECTED.vertexIndex);
-		const pos = position[this.#mesh.cell(this.#mesh.vertex, this.#SELECTED.vertexIndex)];
+	changeVertexPosition(transform, index){
 
-		pos.multiplyScalar(1.5);
+		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		console.log(this.#mesh.getAttribute(this.#mesh.vertex, "transform"));
+		const posCell = position[this.#mesh.cell(this.#mesh.vertex, this.#SELECTED.vertexIndex)];
+
+		this.#transformValue = new THREE.Vector3();
+		if(!this.#transformHasBeen){
+			this.#transformValue = Object.assign({}, posCell);
+			this.#transformHasBeen = true;
+		}
+		if(this.#transformValue){
+			posCell.addScalar(0.5);
+		}
+		
+		console.log(posCell);
+		console.log(this.#transformValue);
+		console.log(index);
+
+
 		this.setMesh(this.#mesh);
 		this.clearVertexAsDots();
 		this.showVertexAsDots();
-		// console.log(this.#SELECTED.position);
+		
 		this.render();
 	}
 }

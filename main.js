@@ -220,7 +220,8 @@ function mainloop() {
     requestAnimationFrame(mainloop);
 }
 
-
+///////////////////////////////////////////////
+// Reset options renderer (when apply catmullclark)
 function reset(){
     if(guiParams.showOriginalEdges){
         viewer.showOriginalEdges();
@@ -237,12 +238,14 @@ function reset(){
 
     viewer.setFaceOpacity(guiParams.faceOpacity);
     viewer.setEdgeOpacity(guiParams.edgeOpacity);
-    viewer.showEdges();
+    viewer.showEdges(guiParams.showEdges);
     viewer.setFaceColor(guiParams.color);
     
     // viewer.clearVertexNormals();
 }
 
+///////////////////////////////////////////////
+// Set GUI if selected vertex has been changed
 function vertexHasBeenChanged(){
     const transform = viewer.vertexTransform();
     if(transform){
@@ -283,5 +286,5 @@ function listner() {
     });
 }
 
-listner();
+listner(); // Add listner
 mainloop();

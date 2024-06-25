@@ -349,6 +349,7 @@ export default class Viewer {
 		this.render();
 	}
 
+	// select mesh by rayCaster
 	selectMesh(pointer){
 		this.#raycaster.setFromCamera(pointer, this.#camera);
 
@@ -375,7 +376,7 @@ export default class Viewer {
 		this.render();
 	}
 
-
+	// transform selected vertex
 	changeVertexPosition(transformVector){
 		
 		const vertexIndex = this.#selected.vertexIndex;
@@ -394,6 +395,7 @@ export default class Viewer {
 		this.render();
 	}
 
+	// If selected vertex has been changed
 	vertexTransform(){
 		if(this.#selected){
 			const vertexIndex = this.#selected.vertexIndex;

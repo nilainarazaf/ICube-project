@@ -15,23 +15,21 @@ export default class Viewer {
 	#mesh; // The mesh object
 	#meshRenderer; // Renderer for the mesh
 
+	#originalEdges;
+
 	#faceNormals; // Array to store face normals
 	#vertexNormals; // Array to store vertex normals
 	#vertices = []; // Array to store vertex positions
 
 	#firstIteration = true; // Flag for the first iteration
-	#INTERSECTED; // Variable to store the intersected object
+	#intersected; // Variable to store the intersected object
 
 	#SELECTED;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
-	#faceHoverIndex;
-	#faceHoverColor;
-
-	#vertexHover;
-
-	#transformValue;
-	#transformHasBeen = false;
+	#hasBeenChanged = [];
+	#transformVector = [];
+	#positions_init = [];
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -46,11 +44,11 @@ export default class Viewer {
 		this.#scene.background = new THREE.Color(0x444444);
 
 		// Add ambient light to the scene
-		const ambientLight = new THREE.AmbientLight(0xAAAAFF, 0.5);
+		const ambientLight = new THREE.AmbientLight(0xAAAAaa, 0.5);
 		this.#scene.add(ambientLight);
 
 		// Add point light to the scene
-		const pointLight = new THREE.PointLight(0x3137DD, 5);
+		const pointLight = new THREE.PointLight(0x313131, 5);
 		this.#pointLight = pointLight;
 		pointLight.position.set(10, 8, 5);
 		this.#scene.add(pointLight);
@@ -90,22 +88,31 @@ export default class Viewer {
 		this.#meshRenderer.edges.create();
 		this.#meshRenderer.edges.addTo(this.#scene);
 
+		if(!this.#originalEdges){
+			this.#originalEdges = this.#meshRenderer.edges;
+		}
+
 		this.#meshRenderer.faces.create();
 		this.#meshRenderer.faces.addTo(this.#scene);
 
-		this.#mesh.addAttribute(this.#mesh.vertex, "transform");
-		this.#mesh.addAttribute(this.#mesh.vertex, "position_init");
-
-		const positionInit = this.#mesh.addAttribute(this.#mesh.vertex, "position_init")
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
-		this.#mesh.foreach(this.#mesh.vertex, vId => {
-			console.log(vId);
-			position[this.#mesh.cell(this.#mesh.vertex, vId)].hasBeenChanged = false;
-			positionInit[this.#mesh.cell(this.#mesh.vertex, vId)] = position[this.#mesh.cell(this.#mesh.vertex, vId)];
-			console.log(positionInit[this.#mesh.cell(this.#mesh.vertex, vId)]);
-		});
-		console.log(this.#mesh.getAttribute(this.#mesh.vertex, "position_init"));
+		this.#positions_init = Object.assign(position);
+
+		if (this.#mesh) {
+			this.#mesh.foreach(this.#mesh.vertex, vId => {
+				this.#hasBeenChanged.push(false);
+				this.#transformVector.push(new THREE.Vector3());
+			});
+		}
+
+		const machin = this.#mesh.addAttribute(this.#mesh.vertex, 'transforme');
+		if (this.#mesh) {
+			this.#mesh.foreach(this.#mesh.vertex, vId => {
+				this.#hasBeenChanged.push(false);
+				this.#transformVector.push(new THREE.Vector3());
+			});
+		}
 	}
 
 	// Set the opacity of the mesh faces
@@ -203,7 +210,6 @@ export default class Viewer {
 			this.#vertexNormals.forEach(helper => {
 				this.#scene.remove(helper);
 			});
-
 			this.#vertexNormals = [];
 		}
 		this.render();
@@ -244,7 +250,6 @@ export default class Viewer {
 			this.#vertices.forEach(vertex => {
 				this.#scene.remove(vertex);
 			});
-
 			this.#vertices = [];
 		}
 		this.render();
@@ -276,6 +281,17 @@ export default class Viewer {
 		this.initializeMeshRenderer(this.#mesh);
 	}
 
+	showOriginalEdges(){
+		this.#originalEdges.addTo(this.#scene);
+		this.render();
+	}
+	clearOriginalEdges(){
+		if (this.#originalEdges) {
+			this.#scene.remove(this.#originalEdges.mesh);
+		}
+		this.render();
+	}
+
 	// Change the color of a face by its ID
 	changeColorFace(id) {
 		if (this.#meshRenderer.faces.mesh) {
@@ -294,20 +310,20 @@ export default class Viewer {
 		
 		let id = 0;
 		if ( intersects.length > 0 ) {
-			// (this.#INTERSECTED != this.#SELECTED && this.#INTERSECTED && this.#SELECTED)
-			if ( (this.#INTERSECTED != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#SELECTED) && this.#SELECTED) ) {
-				if ( this.#INTERSECTED ) this.#INTERSECTED.material.emissive.setHex( this.#INTERSECTED.currentHex );
-				this.#INTERSECTED = intersects[ 0 ].object;
-				this.#INTERSECTED.currentHex = this.#INTERSECTED.material.emissive.getHex();
+			// (this.#intersected != this.#SELECTED && this.#intersected && this.#SELECTED)
+			if ( (this.#intersected != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#SELECTED) && this.#SELECTED) ) {
+				if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex );
+				this.#intersected = intersects[ 0 ].object;
+				this.#intersected.currentHex = this.#intersected.material.emissive.getHex();
 
-				this.#INTERSECTED.material.emissive.setHex( 0xff0000 );
+				this.#intersected.material.emissive.setHex( 0xff0000 );
 			}
 
 		} else {
 
-			if ( this.#INTERSECTED ) this.#INTERSECTED.material.emissive.setHex( this.#INTERSECTED.currentHex ); 
+			if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex ); 
 
-			this.#INTERSECTED = null;
+			this.#intersected = null;
 
 		}
 		this.render();
@@ -327,8 +343,8 @@ export default class Viewer {
 
 				this.#SELECTED = intersects[ 0 ].object;
 				this.#SELECTED.material.emissive.setHex( 0xeeeeee );
-				if(this.#INTERSECTED == this.#SELECTED) {
-					this.#INTERSECTED.currentHex = this.#SELECTED.material.emissive.getHex();
+				if(this.#intersected == this.#SELECTED) {
+					this.#intersected.currentHex = this.#SELECTED.material.emissive.getHex();
 				}
 			}
 
@@ -345,34 +361,20 @@ export default class Viewer {
 
 
 	changeVertexPosition(transformVector){
-		console.log(this.#SELECTED.vertexIndex);
-		const index = this.#SELECTED.vertexIndex;
-
-		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		const positionInit = this.#mesh.getAttribute(this.#mesh.vertex, "position_init");
-		const transform = this.#mesh.getAttribute(this.#mesh.vertex, "transform");
-		// const posCell = position[this.#mesh.cell(this.#mesh.vertex, this.#SELECTED.vertexIndex)];
-
-		// this.#transformValue = new THREE.Vector3();
-		const positionId = this.#mesh.cell(this.#mesh.vertex, index)
-		console.log("pos:"+positionId);
-		transform[positionId] = transformVector;
-		console.log(transform);
-		console.log(positionInit)
-		// position[positionId].addVectors(transform[positionId], positionInit[positionId]);
-
-
-		// if(!this.#transformHasBeen){
-		// 	this.#transformValue = Object.assign({}, posCell);
-		// 	this.#transformHasBeen = true;
-		// }
-		// if(this.#transformValue){
-		// 	posCell.addScalar(0.5);
-		// }
 		
-		// console.log(posCell);
-		// console.log(this.#transformValue);
-		// console.log(index);
+		console.log(this.#SELECTED.vertexIndex);
+		const vertexIndex = this.#SELECTED.vertexIndex;
+		const positionIndex = this.#mesh.cell(this.#mesh.vertex, vertexIndex)
+		
+		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		
+		this.#hasBeenChanged[vertexIndex] = true;
+		this.#transformVector[vertexIndex] = (transformVector);
+		position[positionIndex].addVectors(transformVector, this.#positions_init[positionIndex]);
+		
+		console.log(this.#hasBeenChanged);
+		console.log(this.#transformVector);
+		console.log(this.#positions_init);
 
 
 		this.setMesh(this.#mesh);
@@ -380,5 +382,14 @@ export default class Viewer {
 		this.showVertexAsDots();
 		
 		this.render();
+	}
+
+	vertexTransform(){
+		if(this.#SELECTED){
+			const vertexIndex = this.#SELECTED.vertexIndex;
+			if(this.#hasBeenChanged[vertexIndex]){
+				return this.#transformVector[vertexIndex];
+			}
+		}
 	}
 }

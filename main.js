@@ -31,40 +31,49 @@ window.addEventListener('resize', function() {
 ///////////////////////////////////////////////
 // GUI for setting parameters on the mesh
 const guiParams = {
+    // file
     loadFile: function() {
         document.getElementById('fileInput').click();
     },
-
     fileName: "fileName.off",
     content: "", 
-
     saveFile: function() {
         saveFile();
     },
 
+    // Options
+    showOriginalEdges: true,
     faceOpacity: 1,
     edgeOpacity: 1,
 	faceNormals: false,
     showVertex: false,
     color: 0x3137DD,
 
+    // Vertex
     positionX: 0,
     positionY: 0,
     positionZ: 0,
     change: function(){
         const vertex = new THREE.Vector3(this.positionX, this.positionY, this.positionZ);
-        this.changeVertexPosition(vertex);
+        viewer.changeVertexPosition(vertex);
     },
 
+    // CatmullClark
 	iteration: 1,
 	applyCatmullClark: function() {
         applyCatmullClark(guiParams.iteration);
     },
+    reset: function(){
+        this.reset();
+    }
 };
 
 ///////////////////////////////////////////////
 // Set up the GUI
 const gui = new GUI();
+gui.domElement.addEventListener('click', function(event) {
+    event.stopPropagation();
+})
 
 // File
 const file = gui.addFolder('File');
@@ -74,6 +83,14 @@ file.add(guiParams, 'saveFile').name('Save File');
 
 // Options
 const options = gui.addFolder('Options');
+
+options.add(guiParams, 'showOriginalEdges').onChange(bool => {
+    if (bool) {
+        viewer.showOriginalEdges();
+    } else {
+        viewer.clearOriginalEdges();
+    }
+});
 options.add(guiParams, 'faceNormals').onChange(bool => {
     if (bool) {
         viewer.showFaceNormals();
@@ -99,15 +116,9 @@ options.addColor(guiParams, 'color').onChange(color => {
 });
 
 const guiVertex = gui.addFolder('Vertex');
-guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).onChange(x => {
-    viewer.changeVertexPosition(x);
-});
-guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).onChange(y => {
-    viewer.changeVertexPosition(y);
-});
-guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange(z => {
-    viewer.changeVertexPosition(z);
-});
+guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).listen();
+guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).listen();
+guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).listen();
 
 guiVertex.add(guiParams, 'change').name('change');
 
@@ -115,6 +126,7 @@ guiVertex.add(guiParams, 'change').name('change');
 const catmullClark = gui.addFolder('CatmullClark');
 catmullClark.add(guiParams, 'iteration');
 catmullClark.add(guiParams, 'applyCatmullClark').name('Apply');
+catmullClark.add(guiParams, 'reset');
 
 ///////////////////////////////////////////////
 // Handle file input change event
@@ -202,9 +214,22 @@ function mainloop() {
     requestAnimationFrame(mainloop);
 }
 
+function reset(){
+    console.log("reset");
+}
+
+function vertexHasBeenChanged(){
+    const transform = viewer.vertexTransform();
+    if(transform){
+        guiParams.positionX = (transform.x);
+        guiParams.positionY = (transform.y);
+        guiParams.positionZ = (transform.z);
+    }
+}
+
 ///////////////////////////////////////////////
 // Initialize mouse movement listener
-function first() {
+function listner() {
     window.addEventListener('mousemove', function(e) {
         
         mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -228,9 +253,10 @@ function first() {
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
             viewer.selectShape(mousePsoition);
+            vertexHasBeenChanged();
         }
     });
 }
 
-first();
+listner();
 mainloop();

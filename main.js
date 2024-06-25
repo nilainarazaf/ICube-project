@@ -46,7 +46,8 @@ const guiParams = {
     faceOpacity: 1,
     edgeOpacity: 1,
 	faceNormals: false,
-    showVertex: false,
+    showVertices: false,
+    showEdges: true,
     color: 0x3137DD,
 
     // Vertex
@@ -98,18 +99,21 @@ options.add(guiParams, 'faceNormals').onChange(bool => {
         viewer.clearFaceNormals();
     }
 });
-options.add(guiParams, 'showVertex').onChange(bool => {
+options.add(guiParams, 'showVertices').onChange(bool => {
     if (bool) {
-        viewer.showVertexAsDots();
+        viewer.showVertices();
     } else {
-        viewer.clearVertexAsDots();
+        viewer.clearVertices();
     }
 });
 options.add(guiParams, 'faceOpacity', 0, 1, 0.01).onChange(opacity => {
     viewer.setFaceOpacity(opacity);
 });
-options.add(guiParams, 'edgeOpacity', 0, 1, 0.01).onChange(opacity => {
+options.add(guiParams, 'edgeOpacity', 0, 1, 0.001).onChange(opacity => {
     viewer.setEdgeOpacity(opacity);
+});
+options.add(guiParams, 'showEdges').onChange(bool => {
+    viewer.showEdges(bool);
 });
 options.addColor(guiParams, 'color').onChange(color => {
     viewer.setFaceColor(color);
@@ -163,27 +167,29 @@ function saveFile() {
 function applyCatmullClark(iteration) {
     for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {
         CatmullClark(dataHandler.mesh);
+        reset();
     }
 
     const cmap = dataHandler.mesh;
     let vertex = cmap.vertex;
 
-    const position = cmap.getAttribute(cmap.vertex, "position");
-    const ref = cmap.getAttribute(cmap.vertex, "<refs>");
-    let buff = cmap.getAttribute(cmap.dart, "<emb_1>");
-    buff = cmap.getAttribute(cmap.dart, "<topo_d>");
-    buff = cmap.getAttribute(cmap.dart, "<topo_phi1>");
-    buff = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
-    buff = cmap.getAttribute(cmap.dart, "<topo_phi2>");
+    // const position = cmap.getAttribute(cmap.vertex, "position");
+    // const ref = cmap.getAttribute(cmap.vertex, "<refs>");
+    // let buff = cmap.getAttribute(cmap.dart, "<emb_1>");
+    // buff = cmap.getAttribute(cmap.dart, "<topo_d>");
+    // buff = cmap.getAttribute(cmap.dart, "<topo_phi1>");
+    // buff = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
+    // buff = cmap.getAttribute(cmap.dart, "<topo_phi2>");
     // console.log(buff);
 
-    cmap.foreach(cmap.face, fid => {
-        const instanceId = cmap.getAttribute(cmap.dart, "<topo_d>");
-        const idFace = instanceId[cmap.cell(cmap.vertex, fid)];
-        position[idFace];
-    });
+    // cmap.foreach(cmap.face, fid => {
+    //     const instanceId = cmap.getAttribute(cmap.dart, "<topo_d>");
+    //     const idFace = instanceId[cmap.cell(cmap.vertex, fid)];
+    //     position[idFace];
+    // });
 
     viewer.setMesh(dataHandler.mesh);
+    reset();
     render();
 };
 
@@ -214,8 +220,27 @@ function mainloop() {
     requestAnimationFrame(mainloop);
 }
 
+
 function reset(){
-    console.log("reset");
+    if(guiParams.showOriginalEdges){
+        viewer.showOriginalEdges();
+    } else {
+        viewer.clearOriginalEdges();
+    }
+    viewer.clearFaceNormals();
+    if(guiParams.showVertices){
+        viewer.clearVertices();
+        viewer.showVertices();
+    } else {
+        viewer.clearVertices();
+    }
+
+    viewer.setFaceOpacity(guiParams.faceOpacity);
+    viewer.setEdgeOpacity(guiParams.edgeOpacity);
+    viewer.showEdges();
+    viewer.setFaceColor(guiParams.color);
+    
+    // viewer.clearVertexNormals();
 }
 
 function vertexHasBeenChanged(){
@@ -240,7 +265,7 @@ function listner() {
         const y = e.clientY - canvasBounds.top;
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
-            viewer.overShape(mousePsoition);
+            viewer.hoverMesh(mousePsoition);
         }
     });
     window.addEventListener('click', function(e) {
@@ -252,7 +277,7 @@ function listner() {
         const y = e.clientY - canvasBounds.top;
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
-            viewer.selectShape(mousePsoition);
+            viewer.selectMesh(mousePsoition);
             vertexHasBeenChanged();
         }
     });

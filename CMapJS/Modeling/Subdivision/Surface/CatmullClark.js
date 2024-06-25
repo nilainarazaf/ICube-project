@@ -25,8 +25,6 @@ export default function catmullClark(cmap){
 			console.log(vid); // indice du sommet
 			console.log(delta[vid]);
 			cmap.foreachDartOf(vertex, vd, d => {
-				console.log("sommet["+cmap.cell(vertex, cmap.phi2[d])+"] :: ");
-				console.log(pos[cmap.cell(vertex, cmap.phi2[d])]); 
 				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]);
 				delta[vid].sub(pos[cmap.cell(vertex, cmap.phi2[d])]);
 			})
@@ -197,7 +195,7 @@ export function catmullClark_inter(cmap){
 			edgeVerticesCache.push(vd);
 
 			let vid = cmap.cell(vertex, vd); // prend tous les points assosies a ce sommet
-			console.log(cmap.cell(vertex, vd)); // print
+			// console.log(cmap.cell(vertex, vd)); // print
 			pos[vid] = new Vector3(); // init les position des point en relaation avec le sommet
 			cmap.foreachDartOf(vertex, vd, d => { // prend tous les indices de chaque point dans les brins
 				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]); // prend les points de la face assossie

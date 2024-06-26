@@ -48,7 +48,7 @@ const guiParams = {
 	faceNormals: false,
     showVertices: false,
     showEdges: true,
-    color: 0x3137DD,
+    color: 0x0099FF,
 
     // Vertex
     positionX: 0,
@@ -120,9 +120,19 @@ options.addColor(guiParams, 'color').onChange(color => {
 });
 
 const guiVertex = gui.addFolder('Vertex');
-guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).listen();
-guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).listen();
-guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).listen();
+guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).onChange( x =>{
+    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+        viewer.changeVertexPosition(vertex);
+});
+guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).onChange( x =>{
+    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+        viewer.changeVertexPosition(vertex);
+});
+guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange( x =>{
+    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+        viewer.changeVertexPosition(vertex);
+});
+
 
 guiVertex.add(guiParams, 'change').name('change');
 
@@ -280,6 +290,7 @@ function listner() {
         const y = e.clientY - canvasBounds.top;
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
+            console.log(mousePsoition);
             viewer.selectMesh(mousePsoition);
             vertexHasBeenChanged();
         }

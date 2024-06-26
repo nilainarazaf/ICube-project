@@ -96,6 +96,7 @@ export default class Viewer {
 
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		this.#positions_init = Object.assign(position);
+		// this.#positions_init = position.clone(true);
 
 		if (this.#mesh) {
 			this.#mesh.foreach(this.#mesh.vertex, vId => {
@@ -336,11 +337,13 @@ export default class Viewer {
 		
 		let id = 0;
 		if ( intersects.length > 0 ) {
-			if ( (this.#intersected != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#selected) && this.#selected) ) {
-				if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex );
-				this.#intersected = intersects[ 0 ].object;
-				this.#intersected.currentHex = this.#intersected.material.emissive.getHex();
-				this.#intersected.material.emissive.setHex( 0xff0000 );
+			if(this.#vertices.includes(intersects[ 0 ].object)){
+				if ( (this.#intersected != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#selected) && this.#selected) ) {
+					if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex );
+					this.#intersected = intersects[ 0 ].object;
+					this.#intersected.currentHex = this.#intersected.material.emissive.getHex();
+					this.#intersected.material.emissive.setHex( 0xff0000 );
+				}
 			}
 		} else {
 			if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex ); 
@@ -356,14 +359,17 @@ export default class Viewer {
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 		
 		let id = 0;
+		console.log(intersects);
 		if ( intersects.length > 0 ) {
-			console.log("Selected");
-			if ( this.#selected != intersects[ 0 ].object ) {
-				if ( this.#selected ) this.#selected.material.emissive.setHex( 0 );
-				this.#selected = intersects[ 0 ].object;
-				this.#selected.material.emissive.setHex( 0xcccccc );
-				if(this.#intersected == this.#selected) {
-					this.#intersected.currentHex = this.#selected.material.emissive.getHex();
+			if(this.#vertices.includes(intersects[ 0 ].object)){
+				console.log("Selected");
+				if ( this.#selected != intersects[ 0 ].object ) {
+					if ( this.#selected ) this.#selected.material.emissive.setHex( 0 );
+					this.#selected = intersects[ 0 ].object;
+					this.#selected.material.emissive.setHex( 0xcccccc );
+					if(this.#intersected == this.#selected) {
+						this.#intersected.currentHex = this.#selected.material.emissive.getHex();
+					}
 				}
 			}
 		} else {
@@ -387,6 +393,10 @@ export default class Viewer {
 		this.#hasBeenChanged[vertexIndex] = true;
 		this.#transformVector[vertexIndex] = (transformVector);
 		position[positionIndex].addVectors(transformVector, this.#positions_init[positionIndex]);
+
+		console.log(this.#positions_init[positionIndex]);
+		console.log(transformVector);
+		console.log(position[positionIndex]);
 
 		this.setMesh(this.#mesh);
 		this.clearVertices();

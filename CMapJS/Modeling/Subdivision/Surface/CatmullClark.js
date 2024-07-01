@@ -1,5 +1,7 @@
+import {GenCatmullClark} from '../../../../GenCatmullClark.js';
 import {cutAllEdges, quadrangulateAllFaces, quadrangulateFace} from '../../../Utils/Subdivision.js';
 import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
+
 export default function catmullClark(cmap, generation = 1){
 	const vertex = cmap.vertex;
 	const edge = cmap.edge;
@@ -10,19 +12,18 @@ export default function catmullClark(cmap, generation = 1){
 
 	//contiennet des brins
 	const initVerticesCache = cmap.cache(vertex);
-	const faceVerticesCache = [];
-	const edgeVerticesCache = [];
+	let faceVerticesCache = [];
+	let edgeVerticesCache = [];
+		
+	const gen = new GenCatmullClark(cmap, generation);
 
-	// decoupe topologique uniquement
-	quadrangulateAllFaces(cmap, 
-		vd => {
-			edgeVerticesCache.push(vd);
-		},
-		vd => {
-			faceVerticesCache.push(vd);
-		});
-		console.log(edgeVerticesCache);
+	Object.assign(edgeVerticesCache, gen.edgeVertices);
+	Object.assign(faceVerticesCache, gen.faceVertices);
 
+	console.log(initVerticesCache);
+	console.log(edgeVerticesCache);
+	console.log(faceVerticesCache);
+	
 	// initialisation des poids à rien
 	cmap.foreach(vertex, vd => {
 		weights[cmap.cell(vertex, vd)] = {};
@@ -32,7 +33,7 @@ export default function catmullClark(cmap, generation = 1){
 	cmap.foreach(vertex, vd => {
 		const vid = cmap.cell(vertex, vd);
 		const n = cmap.degree(vertex, vd);
-		console.log(n)
+		// console.log(vd)
 		let d0 = vd;
 		let d1 = d0;
 
@@ -86,11 +87,16 @@ export default function catmullClark(cmap, generation = 1){
 		
 	}, {cache: faceVerticesCache})
 
-	console.log(weights);
+	// Object.assign(weights, gen.weights);
+
+	// gen.saveWeights(weights);
+	// console.log(weights);
+	// console.log(gen.weights);
 
 	// stockage de tout les sommets de nouvelle generation
 	// on voudra seulement les identifiants des sommets pas les brins
-	const newGeneration = cmap.cache(vertex);
+	// const newGenerationId = cmap.cache(vertex);
+	// gen.saveAllNewVertices(newGenerationId);
 
 	/// calcul de la géométrie
 	const position2 = cmap.addAttribute(vertex, "position" + generation);
@@ -101,6 +107,8 @@ export default function catmullClark(cmap, generation = 1){
 		position2[vid] = new Vector3();
 	})
 
+	console.log( gen.weights);
+	console.log( weights)
 
 	// d'abord les faces
 	cmap.foreach(vertex, vd => {
@@ -108,6 +116,7 @@ export default function catmullClark(cmap, generation = 1){
 		const weight = weights[vid];
 
 		for(const [vid2, w] of Object.entries(weight)) {
+			console.log(vid2, position[vid2]);
 			position2[vid].addScaledVector(position[vid2], w);
 		}
 
@@ -150,103 +159,36 @@ export default function catmullClark(cmap, generation = 1){
 		position[vid].copy(position2[vid]);
 	})
 
+	return gen;
+
 }
-// export function catmullClark_inter(cmap){
-// 	const vertex = cmap.vertex;
-// 	const edge = cmap.edge;
-// 	const face = cmap.face;
 
-// 	const pos = cmap.getAttribute(vertex, "position");
-// 	const delta = cmap.addAttribute(vertex, "delta");
-// 	const incident_f = cmap.addAttribute(vertex, "incident_f");
 
-// 	const initVerticesCache = cmap.cache(vertex);
-// 	const faceVerticesCache = [];
-// 	const edgeVerticesCache = [];
 
-// 	quadrangulateAllFaces(cmap, 
-// 		vd => {
-// 			edgeVerticesCache.push(vd);
 
-// 			let vid = cmap.cell(vertex, vd);
-// 			pos[vid] = new Vector3();
-// 			delta[vid] = new Vector3();
-// 			incident_f[vid] = new Vector3();
-// 			cmap.foreachDartOf(vertex, vd, d => {
-// 				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]);
-// 				delta[vid].sub(pos[cmap.cell(vertex, cmap.phi2[d])]);
-// 			})
-// 			pos[vid].multiplyScalar(0.5);
-// 			delta[vid].multiplyScalar(0.25);
-// 		},
-// 		vd => {
-// 			faceVerticesCache.push(vd);
-// 			let vid = cmap.cell(vertex, vd);
-// 			let nbEdges = 0;
-// 			pos[vid] = new Vector3();
-// 			delta[vid] = new Vector3();
-// 			cmap.foreachDartOf(vertex, vd, d => {
-// 				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]);
-// 				++nbEdges;
-// 			});
-// 			pos[vid].multiplyScalar(1 / nbEdges);
 
-// 			cmap.foreachDartOf(vertex, vd, d => {
-// 				delta[cmap.cell(vertex, cmap.phi2[d])].addScaledVector(pos[vid], 0.25);
-// 				incident_f[cmap.cell(vertex, cmap.phi2[d])].addScaledVector(pos[vid], 0.5);
-// 			});
-// 		});
-	
-// 	let F = new Vector3;
-// 	let R = new Vector3;
-// 	let n = 0;
-// 	let vid2 = 0;
-// 	cmap.foreach(vertex, vd => {
-// 		delta[cmap.cell(vertex, vd)] = new Vector3();
-// 		F.set(0, 0, 0);
-// 		R.set(0, 0, 0);
-// 		n = 0;
-// 		cmap.foreachDartOf(vertex, vd, d => {
-// 			vid2 = cmap.cell(vertex, cmap.phi2[d]);
-// 			F.add(incident_f[vid2]);
-// 			R.add(pos[vid2]);
-// 			++n;
-// 		});
-// 		delta[cmap.cell(vertex, vd)]
-// 			.addScaledVector(pos[cmap.cell(vertex, vd)], -3 * n)
-// 			.add(F)
-// 			.addScaledVector(R, 2)
-// 			.multiplyScalar(1/(n*n));
 
-// 	}, {cache: initVerticesCache});
 
-// 	cmap.foreach(vertex, vd => {
-// 		let avg_delta = new Vector3;
-// 		let n = 0;
-// 		cmap.foreachDartOf(vertex, vd, d => {
-// 			avg_delta.add(delta[cmap.cell(vertex, cmap.phi1[cmap.phi1[d]])]);
-// 			++n;
-// 		});
-// 		avg_delta.divideScalar(n);
-// 		console.log(avg_delta)
-// 		pos[cmap.cell(vertex, vd)].sub(avg_delta);
-// 	}, {cache: faceVerticesCache});
 
-// 	cmap.foreach(vertex, vd => {
-// 		let avg_delta = new Vector3;
-// 		let n = 0;
-// 		cmap.foreachDartOf(vertex, vd, d => {
-// 			avg_delta.add(delta[cmap.cell(vertex, cmap.phi1[cmap.phi1[d]])]);
-// 			++n;
-// 		});
-// 		avg_delta.divideScalar(n);
-// 		pos[cmap.cell(vertex, vd)].sub(avg_delta);
-// 	}, {cache: edgeVerticesCache});
 
-// 	delta.delete();
-// 	incident_f.delete();
-// }
 
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 export function catmullClark_inter(cmap){
 	const vertex = cmap.vertex;
 	const edge = cmap.edge;

@@ -391,9 +391,12 @@ export default class Viewer {
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
 		this.#hasBeenChanged[vertexIndex] = true;
-		this.#transformVector[vertexIndex] = (transformVector);
-		position[positionIndex].addVectors(transformVector, this.#positions_init[positionIndex]);
+		this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
+		position[positionIndex].copy(this.#positions_init[positionIndex])
+		
 
+		position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
+	
 		console.log(this.#positions_init[positionIndex]);
 		console.log(transformVector);
 		console.log(position[positionIndex]);

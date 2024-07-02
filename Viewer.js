@@ -32,6 +32,8 @@ export default class Viewer {
 	#transformVector = [];
 	#positions_init = [];
 
+	catmullClarkGenerations = [];
+
 	constructor(renderer) {
 		// Initialize the renderer
 		this.#renderer = renderer;
@@ -397,9 +399,21 @@ export default class Viewer {
 
 		position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
 	
-		console.log(this.#positions_init[positionIndex]);
-		console.log(transformVector);
-		console.log(position[positionIndex]);
+		const currentGen = 0;
+		if(this.genCatmullClark > 0){
+			currentGen = this.genCatmullClark.length - 1;
+			this.genCatmullClark[currentGen].addTransform(positionIndex, transformVector);
+			this.genCatmullClark[currentGen].updatePosition();
+		} else { // operation directs sur les positions
+			this.#hasBeenChanged[vertexIndex] = true;
+			this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
+			position[positionIndex].copy(this.#positions_init[positionIndex])
+			
+			position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
+		}
+		// console.log(this.#positions_init[positionIndex]);
+		// console.log(transformVector);
+		// console.log(position[positionIndex]);
 
 		this.setMesh(this.#mesh);
 		this.clearVertices();
@@ -416,5 +430,10 @@ export default class Viewer {
 				return this.#transformVector[vertexIndex];
 			}
 		}
+	}
+
+	genCatmullClark(gen){
+        this.catmullClarkGenerations.push(gen);
+		console.log(this.catmullClarkGenerations);
 	}
 }

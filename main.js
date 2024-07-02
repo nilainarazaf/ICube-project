@@ -176,7 +176,17 @@ function saveFile() {
 // Apply Catmull-Clark subdivision
 function applyCatmullClark(iteration) {
     for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {
-        CatmullClark(dataHandler.mesh);
+        let iteration = 0;
+        if(viewer.catmullClarkGenerations.length > 0){
+            iteration = viewer.catmullClarkGenerations
+                [viewer.catmullClarkGenerations.length - 1].generationId;
+        }
+
+        const gen = CatmullClark(dataHandler.mesh, iteration + 1);
+        viewer.genCatmullClark(gen);
+        
+        // console.log(gen);
+
         reset();
     }
 

@@ -120,11 +120,11 @@ options.addColor(guiParams, 'color').onChange(color => {
 });
 
 const guiVertex = gui.addFolder('Vertex');
-guiVertex.add(guiParams, 'positionX', -10, 10, 0.5).onChange( x =>{
+guiVertex.add(guiParams, 'positionX', -10, 10, 0.05).onChange( x =>{
     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
         viewer.changeVertexPosition(vertex);
 });
-guiVertex.add(guiParams, 'positionY', -10, 10, 0.5).onChange( x =>{
+guiVertex.add(guiParams, 'positionY', -10, 10, 0.05).onChange( x =>{
     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
         viewer.changeVertexPosition(vertex);
 });
@@ -174,15 +174,17 @@ function saveFile() {
 
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
-function applyCatmullClark(iteration) {
-    for (let nbIteration = 0; nbIteration < iteration; nbIteration++) {
-        let iteration = 0;
+function applyCatmullClark(iteration = 1) {
+    for (let id = 0; id <= iteration; id++) {
+        
+        let generationIndex = 0;
         if(viewer.catmullClarkGenerations.length > 0){
-            iteration = viewer.catmullClarkGenerations
+            generationIndex = viewer.catmullClarkGenerations
                 [viewer.catmullClarkGenerations.length - 1].generationId;
         }
 
-        const gen = CatmullClark(dataHandler.mesh, iteration + 1);
+        const gen = CatmullClark(dataHandler.mesh, generationIndex + id);
+        viewer.setMesh(dataHandler.mesh);
         viewer.genCatmullClark(gen);
         
         // console.log(gen);

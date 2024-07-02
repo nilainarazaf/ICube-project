@@ -5,7 +5,7 @@ class GenCatmullClark {
 
     generationId;
 
-    originalVertices;
+    initialVertices;
     edgeVertices;
     faceVertices;
 
@@ -13,25 +13,51 @@ class GenCatmullClark {
 
     vertices;
 
+	initialPosition
     currentPosition;
     trasnforms;
 
-	constructor(cmap, generation = 1) {
+	constructor(cmap, generation = 0) {
 
         this.generationId = generation;
-        this.originalVertices = {...cmap.cache(cmap.vertex)};
 
-        this.buildTopology(cmap);
-        this.calculateWeights(cmap);
-		this.buildGeometry(cmap);
+		this.initialVertices = {...cmap.cache(cmap.vertex)};
+		let indexGeneration = [];
+		
+		if(generation == 0){
+			const indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
+			
+			cmap.foreach(cmap.vertex, vd => {
+				indexGeneration[vd] = 0;
+			});
 
+			const position = cmap.getAttribute(cmap.vertex, "position");
+			this.initialPosition = Object.assign(position);
+			this.currentPosition = Object.assign(position);
+
+			this.vertices = {...cmap.cache(cmap.vertex)};
+			
+		} else {
+			indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
+
+			this.buildTopology(cmap);
+
+			
+			this.calculateWeights(cmap);
+			
+			this.buildGeometry(cmap);
+
+			cmap.foreach(cmap.vertex, vd => {
+				if(!(Object.values(this.initialVertices).includes(vd))){
+					indexGeneration[vd] = generation;
+				}
+			});
+		}
 		this.initTransform(cmap);
+		
 
+		// console.log(indexGeneration)
 	}
-
-    // saveWeights(weights){
-    //     this.weights = {...weights};
-    // }
 
     saveAllNewVertices(vertices){
         this.vertices = {...vertices};
@@ -55,7 +81,7 @@ class GenCatmullClark {
     }
 
 
-    calculateWeights(cmap, generation = 1){
+    calculateWeights(cmap){
         const vertex = cmap.vertex;
 		const edge = cmap.edge;
 		const face = cmap.face;
@@ -68,7 +94,7 @@ class GenCatmullClark {
 		let faceVerticesCache = [];
 		let edgeVerticesCache = [];
 			
-		Object.assign(initVerticesCache, this.originalVertices);
+		Object.assign(initVerticesCache, this.initialVertices);
 		Object.assign(edgeVerticesCache, this.edgeVertices);
 		Object.assign(faceVerticesCache, this.faceVertices);
 
@@ -80,7 +106,7 @@ class GenCatmullClark {
 
 		
 		// parcourt des sommets initiaux
-		for(const [id, vd] of Object.entries(this.originalVertices)) {
+		for(const [id, vd] of Object.entries(this.initialVertices)) {
 			const vid = cmap.cell(vertex, vd);
 			const n = cmap.degree(vertex, vd);
 			let d0 = vd;
@@ -150,6 +176,8 @@ class GenCatmullClark {
 		const face = cmap.face;
 
 		const position = cmap.getAttribute(vertex, "position");
+		this.initialPosition = Object.assign(position);
+
 		// const weights = cmap.addAttribute(vertex, "weight");
 		let weightsCache = {}
 		// console.log(weightsCache);
@@ -160,7 +188,7 @@ class GenCatmullClark {
 		let edgeVerticesCache = [];
 			
 
-		Object.assign(initVerticesCache, this.originalVertices);
+		Object.assign(initVerticesCache, this.initialVertices);
 		Object.assign(edgeVerticesCache, this.edgeVertices);
 		Object.assign(faceVerticesCache, this.faceVertices);
 
@@ -207,7 +235,7 @@ class GenCatmullClark {
 		}, {cache: edgeVerticesCache})
 		// console.log(position2);
 
-		for(const [id, vd] of Object.entries(this.originalVertices)) {
+		for(const [id, vd] of Object.entries(this.initialVertices)) {
 			const vid = cmap.cell(vertex, vd);
 			const weight = weightsCache[vid];
 
@@ -247,11 +275,36 @@ class GenCatmullClark {
 
 
 	addTransform(positionIndex, transformVector){
-		position[positionIndex].copy(this.position[positionIndex])
-			
-		position[positionIndex].add(transformVector);
+		this.trasnforms[positionIndex] = transformVector;
+		// console.log(positionIndex, this.trasnforms);
 	}
-	
+
+
+	updatePosition(cmap){
+		console.log(this.generationId);
+		const position = cmap.getAttribute(cmap.vertex, "position");
+		
+		for(const [id, transformVector] of Object.entries(this.trasnforms)) {
+			position[id].copy(this.currentPosition[id])
+			position[id].add(transformVector);
+		};
+
+		Object.assign(this.currentPosition, position);
+		console.log( this.currentPosition);
+
+		// this.updateWeights(cmap);
+		// this.updateGeometry(cmap);
+
+		if(this.generationId != 0){
+			this.calculateWeights(cmap);
+			this.buildGeometry(cmap);
+		}
+
+		this.initTransform(cmap);
+
+		Object.assign(this.currentPosition, position);
+		// console.log(this.currentPosition);
+	}
 }
 
 export { GenCatmullClark }

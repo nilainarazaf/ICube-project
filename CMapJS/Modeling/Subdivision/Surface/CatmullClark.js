@@ -2,7 +2,7 @@ import {GenCatmullClark} from '../../../../GenCatmullClark.js';
 import {cutAllEdges, quadrangulateAllFaces, quadrangulateFace} from '../../../Utils/Subdivision.js';
 import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
 
-export default function catmullClark(cmap, generation = 1){		
+export default function catmullClark(cmap, generation = 0){		
 	const gen = new GenCatmullClark(cmap, generation);
 
 	// Object.assign(initVerticesCache, gen.originalVertices);

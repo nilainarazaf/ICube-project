@@ -388,29 +388,35 @@ export default class Viewer {
 	changeVertexPosition(transformVector){
 		
 		const vertexIndex = this.#selected.vertexIndex;
+
 		const positionIndex = this.#mesh.cell(this.#mesh.vertex, vertexIndex)
 		
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
-		this.#hasBeenChanged[vertexIndex] = true;
-		this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
-		position[positionIndex].copy(this.#positions_init[positionIndex])
+		// this.#hasBeenChanged[vertexIndex] = true;
+		// this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
+		// position[positionIndex].copy(this.#positions_init[positionIndex])
 		
 
-		position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
-	
-		const currentGen = 0;
-		if(this.genCatmullClark > 0){
-			currentGen = this.genCatmullClark.length - 1;
-			this.genCatmullClark[currentGen].addTransform(positionIndex, transformVector);
-			this.genCatmullClark[currentGen].updatePosition();
-		} else { // operation directs sur les positions
-			this.#hasBeenChanged[vertexIndex] = true;
-			this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
-			position[positionIndex].copy(this.#positions_init[positionIndex])
-			
-			position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
+		// position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
+		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
+
+		let genToUpdate = indexGeneration[vertexIndex];
+		// console.log(genToUpdate, this.catmullClarkGenerations ,this.catmullClarkGenerations[genToUpdate]);
+
+		if(this.catmullClarkGenerations.length > 0){
+
+			this.catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
+			while (genToUpdate < this.catmullClarkGenerations.length) {
+				this.catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
+				genToUpdate++;
+				console.log(genToUpdate)
+			}
+		
 		}
+
+		
+
 		// console.log(this.#positions_init[positionIndex]);
 		// console.log(transformVector);
 		// console.log(position[positionIndex]);
@@ -434,6 +440,6 @@ export default class Viewer {
 
 	genCatmullClark(gen){
         this.catmullClarkGenerations.push(gen);
-		console.log(this.catmullClarkGenerations);
+		// console.log(this.catmullClarkGenerations);
 	}
 }

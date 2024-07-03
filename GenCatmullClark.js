@@ -15,7 +15,7 @@ class GenCatmullClark {
 
 	initialPosition
     currentPosition;
-    trasnforms;
+    transforms;
 
 	constructor(cmap, generation = 0) {
 
@@ -32,16 +32,29 @@ class GenCatmullClark {
 			});
 
 			const position = cmap.getAttribute(cmap.vertex, "position");
-			this.initialPosition = Object.assign(position);
-			this.currentPosition = Object.assign(position);
+			
+			this.initialPosition = []
+			this.currentPosition = []
+			position.forEach(pos => {
+				this.initialPosition.push(pos);
+				this.currentPosition.push(pos);
+			} )
+			// console.log(this.initialPosition);
+
 
 			this.vertices = {...cmap.cache(cmap.vertex)};
 			
 		} else {
 			indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
 
-			this.buildTopology(cmap);
 
+			const position = cmap.getAttribute(cmap.vertex, "position");
+			this.initialPosition = []
+			position.forEach( pos=> {
+				this.initialPosition.push(pos)
+			})
+
+			this.buildTopology(cmap);
 			
 			this.calculateWeights(cmap);
 			
@@ -175,8 +188,6 @@ class GenCatmullClark {
 		const edge = cmap.edge;
 		const face = cmap.face;
 
-		const position = cmap.getAttribute(vertex, "position");
-		this.initialPosition = Object.assign(position);
 
 		// const weights = cmap.addAttribute(vertex, "weight");
 		let weightsCache = {}
@@ -197,17 +208,17 @@ class GenCatmullClark {
 		// console.log("machinici",weightsCache);
 
 
+		const position = cmap.getAttribute(vertex, "position");
 
 
 
 		/// calcul de la géométrie
-		// const position2 = cmap.addAttribute(vertex, "position" + generation);
-		const position2 = {} 
+		const nextGenPosition = {} 
 
 		// initialisation de la mémoire apres subdivs
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			position2[vid] = new Vector3();
+			nextGenPosition[vid] = new Vector3();
 		});
 		
 		// d'abord les faces
@@ -216,8 +227,8 @@ class GenCatmullClark {
 			const weight = weightsCache[vid];
 			// console.log(weight);
 			for(const [vid2, w] of Object.entries(weight)) {
-				position2[vid].addScaledVector(position[vid2], w);
-				// console.log(vid, position2[vid], w);
+				nextGenPosition[vid].addScaledVector(position[vid2], w);
+				// console.log(vid, nextGenPosition[vid], w);
 			}
 		}, {cache: faceVerticesCache});
 
@@ -228,20 +239,22 @@ class GenCatmullClark {
 			let d0 = cmap.phi2[vd];
 			let d1 = cmap.phi_1[cmap.phi2[cmap.phi_1[vd]]];
 			
-			position2[vid].addScaledVector(position[cmap.cell(vertex, d0)], 0.5);
-			position2[vid].addScaledVector(position[cmap.cell(vertex, d1)], 0.5);
-			// console.log(vd ,position2[vid]);
+			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d0)], 0.5);
+			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d1)], 0.5);
+			// console.log(vd ,nextGenPosition[vid]);
 			
 		}, {cache: edgeVerticesCache})
-		// console.log(position2);
+		// console.log(nextGenPosition);
 
 		for(const [id, vd] of Object.entries(this.initialVertices)) {
 			const vid = cmap.cell(vertex, vd);
 			const weight = weightsCache[vid];
-
+			
+			console.log(weight)
 			for(const [vid2, w] of Object.entries(weight)) {
-				position2[vid].addScaledVector(position[vid2] ?? position2[vid2], w);
-				// console.log(position2[vid]);
+
+				// nextGenPosition[vid].addScaledVector(position[vid2] ?? nextGenPosition[vid2], w);
+				nextGenPosition[vid].copy(position[vid]);
 			}
 
 		}
@@ -249,9 +262,9 @@ class GenCatmullClark {
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
 			const weight = weightsCache[vid];
-			position2[vid].set(0, 0, 0)
+			nextGenPosition[vid].set(0, 0, 0)
 			for(const [vid2, w] of Object.entries(weight)) {
-				position2[vid].addScaledVector(position[vid2] ?? position2[vid2], w);
+				nextGenPosition[vid].addScaledVector(position[vid2] ?? nextGenPosition[vid2], w);
 			}
 
 		}, {cache: edgeVerticesCache})
@@ -259,51 +272,73 @@ class GenCatmullClark {
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
 			position[vid] ??= new Vector3();
-			position[vid].copy(position2[vid]);
+			position[vid].copy(nextGenPosition[vid]);
 		});
 
-		this.currentPosition = {...position2};
+		this.currentPosition = {...nextGenPosition};
 	}
 
 	initTransform(cmap){
-		this.trasnforms = {}
+		this.transforms = {}
 		cmap.foreach(cmap.vertex, vd => {
 			// console.log(vd)
-			this.trasnforms[cmap.cell(cmap.vertex, vd)] = new Vector3();
+			this.transforms[cmap.cell(cmap.vertex, vd)] = new Vector3();
 		});
 	}
 
 
 	addTransform(positionIndex, transformVector){
-		this.trasnforms[positionIndex] = transformVector;
-		// console.log(positionIndex, this.trasnforms);
+		this.transforms[positionIndex] = transformVector;
+		// console.log(positionIndex, this.transforms);
 	}
 
 
 	updatePosition(cmap){
-		console.log(this.generationId);
+		// console.log(this.generationId);
 		const position = cmap.getAttribute(cmap.vertex, "position");
 		
-		for(const [id, transformVector] of Object.entries(this.trasnforms)) {
-			position[id].copy(this.currentPosition[id])
+		console.log("position befor transform :",position);
+		// console.log("position befor transform :",this.transforms);
+		for(const [id, transformVector] of Object.entries(this.transforms)) {
+			this.currentPosition[id].copy(position[id])
+			// console.log(this.currentPosition[id]);
 			position[id].add(transformVector);
+			console.log(position[id]);
+			// console.log(id, transformVector);
 		};
+		console.log("position after transform :",position);
 
-		Object.assign(this.currentPosition, position);
-		console.log( this.currentPosition);
+		// Object.assign(this.currentPosition, position);
+		// console.log( this.currentPosition);
 
 		// this.updateWeights(cmap);
 		// this.updateGeometry(cmap);
 
+		// console.log("position befor geom :",position)
 		if(this.generationId != 0){
 			this.calculateWeights(cmap);
 			this.buildGeometry(cmap);
+			throw new Error();
 		}
+		// console.log("position after geom :",position)
 
 		this.initTransform(cmap);
 
 		Object.assign(this.currentPosition, position);
 		// console.log(this.currentPosition);
+	}
+
+
+	updateCurrentPosition(cmap){
+		const position = cmap.getAttribute(cmap.vertex, "position");
+		
+		for(const [id, transformVector] of Object.entries(this.transforms)) {
+			this.currentPosition[id].copy(position[id])
+			console.log(this.currentPosition[id]);
+			position[id].add(transformVector);
+			console.log(position[id]);
+			console.log(id, transformVector);
+		};
 	}
 }
 

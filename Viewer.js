@@ -361,10 +361,10 @@ export default class Viewer {
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 		
 		let id = 0;
-		console.log(intersects);
+		// console.log(intersects);
 		if ( intersects.length > 0 ) {
 			if(this.#vertices.includes(intersects[ 0 ].object)){
-				console.log("Selected");
+				// console.log("Selected");
 				if ( this.#selected != intersects[ 0 ].object ) {
 					if ( this.#selected ) this.#selected.material.emissive.setHex( 0 );
 					this.#selected = intersects[ 0 ].object;
@@ -375,7 +375,7 @@ export default class Viewer {
 				}
 			}
 		} else {
-			console.log("Deselected");
+			// console.log("Deselected");
 			if ( this.#selected ) {
 				this.#selected.material.emissive.setHex( 0 );
 			}

@@ -302,7 +302,7 @@ function listner() {
         const y = e.clientY - canvasBounds.top;
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
-            console.log(mousePsoition);
+            // console.log(mousePsoition);
             viewer.selectMesh(mousePsoition);
             vertexHasBeenChanged();
         }

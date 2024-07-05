@@ -175,22 +175,29 @@ function saveFile() {
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
 function applyCatmullClark(iteration = 1) {
-    for (let id = 0; id <= iteration; id++) {
+    let generationIndex = 0;
+    // for (let id = 0; id <= iteration; id++) {
         
-        let generationIndex = 0;
         if(viewer.catmullClarkGenerations.length > 0){
             generationIndex = viewer.catmullClarkGenerations
                 [viewer.catmullClarkGenerations.length - 1].generationId;
+            generationIndex = generationIndex + 1;
+        } else {
+            const gen = CatmullClark(dataHandler.mesh, generationIndex);
+            viewer.setMesh(dataHandler.mesh);
+            viewer.genCatmullClark(gen);
+            generationIndex = generationIndex + 1;
         }
 
-        const gen = CatmullClark(dataHandler.mesh, generationIndex + id);
+        console.log(generationIndex)
+        const gen = CatmullClark(dataHandler.mesh, generationIndex);
         viewer.setMesh(dataHandler.mesh);
         viewer.genCatmullClark(gen);
         
         // console.log(gen);
 
         reset();
-    }
+    // }
 
     const cmap = dataHandler.mesh;
     let vertex = cmap.vertex;

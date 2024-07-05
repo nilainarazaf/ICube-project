@@ -9,6 +9,10 @@ class GenCatmullClark {
     edgeVertices;
     faceVertices;
 
+	phi1;
+	phi2;
+	phi_1;
+
     weights;
 
     vertices;
@@ -18,6 +22,12 @@ class GenCatmullClark {
     transforms;
 
 	constructor(cmap, generation = 0) {
+
+		// this.phi1 = {...cmap.phi1}
+		
+		// console.log(cmap.phi2);
+		// console.log(this.phi2);
+		// throw new Error();
 
         this.generationId = generation;
 
@@ -72,6 +82,9 @@ class GenCatmullClark {
 
 			// console.log(position)
 		}
+
+		this.phi2 = {...cmap.phi2}
+		this.phi_1 = {...cmap.phi_1}
 			// throw new Error();
 		this.initTransform(cmap);
 		
@@ -159,8 +172,6 @@ class GenCatmullClark {
 			// let count = 0;
 			do {
 				d = cmap.phi2[d];
-				// count++;
-				// console.log(weightsCache[vid], count)
 				weightsCache[vid][cmap.cell(vertex, d)] = 0.25;
 				d = cmap.phi1[d];	
 			} while (d != vd)
@@ -296,7 +307,6 @@ class GenCatmullClark {
 		};
 	}
 
-
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex] = transformVector;
 		// console.log(positionIndex, this.transforms);
@@ -304,7 +314,7 @@ class GenCatmullClark {
 
 
 	updatePosition(cmap){
-		console.log(this.generationId);
+		console.log("generation n :",this.generationId);
 		const position = cmap.getAttribute(cmap.vertex, "position");
 		
 		if(this.generationId == 0){
@@ -405,14 +415,14 @@ class GenCatmullClark {
 		// console.log(weightsCache);
 
 		//contiennet des brins
-		const initVerticesCache = cmap.cache(vertex);
-		let faceVerticesCache = [];
-		let edgeVerticesCache = [];
+		// const initVerticesCache = cm ap.cache(vertex);
+		// let faceVerticesCache = [];
+		// let edgeVerticesCache = [];
 			
 
-		Object.assign(initVerticesCache, this.initialVertices);
-		Object.assign(edgeVerticesCache, this.edgeVertices);
-		Object.assign(faceVerticesCache, this.faceVertices);
+		// Object.assign(initVerticesCache, this.initialVertices);
+		// Object.assign(edgeVerticesCache, this.edgeVertices);
+		// Object.assign(faceVerticesCache, this.faceVertices);
 		
 		weightsCache = Object.assign(this.weights);
 		
@@ -424,8 +434,12 @@ class GenCatmullClark {
 			position[id] = new Vector3();
 			position[id].copy(this.currentPosition[id])
 		}
+		if(this.generationId == 2){
+			console.log(">> position::",this.initialVertices)
+			// throw new Error();
+		}
 		// Object.assign(position, this.currentPosition);
-		console.log(position)
+		// console.log(position)
 		
 		const nextGenPosition = {} 
 		// console.log(nextGenPosition);
@@ -451,13 +465,18 @@ class GenCatmullClark {
 			// console.log(nextGenPosition)
 		}
 		
+		console.log(position)
+		console.log(this.vertices)
+		console.log(this.phi2);
+		console.log(this.phi_1);
 		// edges
 		for(const [id, vd] of Object.entries(this.edgeVertices)) {
 			const vid = cmap.cell(vertex, vd);
 			
-			let d0 = cmap.phi2[vd];
-			let d1 = cmap.phi_1[cmap.phi2[cmap.phi_1[vd]]];
-			
+			let d0 = this.phi2[vd];
+			let d1 = this.phi_1[this.phi2[this.phi_1[vd]]];
+			console.log(vd, d0, d1, position[cmap.cell(vertex, d0)]);
+			console.log(cmap.cell(vertex, d0), cmap.cell(vertex, cmap.phi1[d0]), d0);
 			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d0)], 0.5);
 			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d1)], 0.5);
 			// console.log(vd ,nextGenPosition[vid]);
@@ -474,7 +493,7 @@ class GenCatmullClark {
 
 			for(const [vid2, w] of Object.entries(weight)) {
 				
-				console.log(vid2, position[vid2], nextGenPosition[vid2], vid2, w);
+				// console.log(vid2, position[vid2], nextGenPosition[vid2], vid2, w);
 				nextGenPosition[vid].addScaledVector(position[vid2] ?? nextGenPosition[vid2], w);
 				// nextGenPosition[vid].copy(position[vid]);
 				console.log(nextGenPosition[vid2]);
@@ -491,13 +510,16 @@ class GenCatmullClark {
 			}
 		}
 
+		console.log(nextGenPosition);
+		// throw new Error();
+
 		const realPos = cmap.getAttribute(cmap.vertex, "position");
 		
-		cmap.foreach(vertex, vd => {
+		for(const [id, vd] of Object.entries(this.vertices)) {
 			const vid = cmap.cell(vertex, vd);
 			realPos[vid] ??= new Vector3();
 			realPos[vid].copy(nextGenPosition[vid]);
-		});
+		};
 
 		this.currentPosition = {...nextGenPosition};
 	}

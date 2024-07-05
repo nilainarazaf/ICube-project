@@ -331,8 +331,10 @@ class GenCatmullClark {
 			}
 				// console.log(this.currentPosition[id]);
 			position[id].add(transformVector);
+
+			il faut afficher initlia position pas de place pour stocker position actuelle
 			// console.log(position[id]);
-			this.initialPosition[id].copy(position[id])
+			la  erreur => this.initialPosition[id].copy(position[id])
 			this.currentPosition[id].copy(position[id])
 			// console.log(id, transformVector);
 			
@@ -346,12 +348,12 @@ class GenCatmullClark {
 		
 		// this.updateWeights(cmap);
 		// this.updateGeometry(cmap);
+		throw new Error();
 		
 		// console.log("position befor geom :",position)
 		if(this.generationId != 0){
 			// this.calculateWeights(cmap);
 			this.updadad(cmap);
-			// throw new Error();
 			// this.buildGeometry(cmap);
 		}
 		// console.log("position after geom :",position)

@@ -14,7 +14,6 @@ export default class Viewer {
 
 	#mesh; // The mesh object
 	#meshRenderer; // Renderer for the mesh
-	#meshColor;
 
 	#originalEdges;
 
@@ -28,11 +27,9 @@ export default class Viewer {
 	#selected;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
-	#hasBeenChanged = [];
-	#transformVector = [];
-	#positions_init = [];
-
 	catmullClarkGenerations = [];
+
+	transformVectorBuffer = {};
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -96,24 +93,6 @@ export default class Viewer {
 		// initialize original mesh, only edges
 		if(!this.#originalEdges) this.#originalEdges = this.#meshRenderer.edges;
 
-		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		this.#positions_init = Object.assign(position);
-		// this.#positions_init = position.clone(true);
-
-		if (this.#mesh) {
-			this.#mesh.foreach(this.#mesh.vertex, vId => {
-				this.#hasBeenChanged.push(false);
-				this.#transformVector.push(new THREE.Vector3());
-			});
-		}
-
-		// const transform = this.#mesh.addAttribute(this.#mesh.vertex, 'transforme');
-		// if (this.#mesh) {
-		// 	this.#mesh.foreach(this.#mesh.vertex, vId => {
-		// 		transform.push(null);
-		// 	});
-		// }
-		// console.log(transform);
 	}
 
 	// Set the mesh and initialize the renderer
@@ -255,24 +234,7 @@ export default class Viewer {
 		this.render();
 	}
 
-	// Add a line to the scene
-	// addLine(from, to) {
-	// 	const line = [];
 
-	// 	if (from == null) {
-	// 		line.push(new THREE.Vector3(0, 0, 0));
-	// 	} else {
-	// 		line.push(from);
-	// 	}
-	// 	line.push(to);
-
-	// 	const material = new THREE.LineBasicMaterial({ color: 0x0 });
-	// 	const geometry = new THREE.BufferGeometry().setFromPoints(line);
-	// 	this.#scene.add(new THREE.Line(geometry, material));
-	// 	this.render();
-	// }
-
-	// Show vertices as dots
 	showVertices() {
 		if (this.#mesh) {
 			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
@@ -393,33 +355,34 @@ export default class Viewer {
 		
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
-		// this.#hasBeenChanged[vertexIndex] = true;
-		// this.#transformVector[vertexIndex] = transformVector.clone(); // Cloner le vecteur transformVector
-		// position[positionIndex].copy(this.#positions_init[positionIndex])
-		
-
-		// position[positionIndex].add(transformVector); // Copier et ajouter le vecteur de transformation
 		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
 
 		let genToUpdate = indexGeneration[vertexIndex];
-		// console.log(genToUpdate, this.catmullClarkGenerations ,this.catmullClarkGenerations[genToUpdate]);
+		genToUpdate++; // on met a jour la prochaine generation
 
-		if(this.catmullClarkGenerations.length > 0){
+		if(genToUpdate == this.catmullClarkGenerations.length){
+			this.transformVectorBuffer[vertexIndex] = transformVector;
+		}
+		
 
+		if(this.catmullClarkGenerations.length > 0 && genToUpdate < this.catmullClarkGenerations.length){
+			
+			if(genToUpdate == 1 && this.catmullClarkGenerations.length == 1){
+				genToUpdate = 0;
+			}
+			
 			this.catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
+			this.catmullClarkGenerations[genToUpdate].toTransform = true;
 			while (genToUpdate < this.catmullClarkGenerations.length) {
 				this.catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
 				genToUpdate++;
-				console.log(genToUpdate)
 			}
-		
+
+		} else {
+			position[positionIndex].add(transformVector);
 		}
 
 		
-
-		// console.log(this.#positions_init[positionIndex]);
-		// console.log(transformVector);
-		// console.log(position[positionIndex]);
 
 		this.setMesh(this.#mesh);
 		this.clearVertices();
@@ -428,15 +391,13 @@ export default class Viewer {
 		this.render();
 	}
 
-	// If selected vertex has been changed
-	vertexTransform(){
-		if(this.#selected){
-			const vertexIndex = this.#selected.vertexIndex;
-			if(this.#hasBeenChanged[vertexIndex]){
-				return this.#transformVector[vertexIndex];
-			}
+	updateCurrentPosition(){
+		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		for(const [id, vd] of Object.entries(this.transformVectorBuffer)) {
+			position[id].add(vd);
 		}
 	}
+	
 
 	genCatmullClark(gen){
         this.catmullClarkGenerations.push(gen);

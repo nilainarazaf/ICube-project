@@ -153,9 +153,16 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
             guiParams.content = `File content: ${content}`;
             dataHandler.loadMeshFromString(content);
             viewer.initializeMeshRenderer(dataHandler.mesh);
+            
+            // Set generation
+            const gen = CatmullClark(dataHandler.mesh, 0);
+            viewer.setMesh(dataHandler.mesh);
+            viewer.genCatmullClark(gen);
         };
         reader.readAsText(file);
     }
+
+
 });
 
 ///////////////////////////////////////////////
@@ -175,47 +182,18 @@ function saveFile() {
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
 function applyCatmullClark(iteration = 1) {
-    let generationIndex = 0;
-    // for (let id = 0; id <= iteration; id++) {
+    let generationIndex = 1;
         
-        if(viewer.catmullClarkGenerations.length > 0){
-            generationIndex = viewer.catmullClarkGenerations
-                [viewer.catmullClarkGenerations.length - 1].generationId;
-            generationIndex = generationIndex + 1;
-        } else {
-            const gen = CatmullClark(dataHandler.mesh, generationIndex);
-            viewer.setMesh(dataHandler.mesh);
-            viewer.genCatmullClark(gen);
-            generationIndex = generationIndex + 1;
-        }
+    generationIndex = viewer.catmullClarkGenerations.length;
 
-        console.log(generationIndex)
-        const gen = CatmullClark(dataHandler.mesh, generationIndex);
-        viewer.setMesh(dataHandler.mesh);
-        viewer.genCatmullClark(gen);
-        
-        // console.log(gen);
-
-        reset();
-    // }
+    const gen = CatmullClark(dataHandler.mesh, generationIndex);
+    viewer.setMesh(dataHandler.mesh);
+    viewer.genCatmullClark(gen);
+    
+    reset();
 
     const cmap = dataHandler.mesh;
     let vertex = cmap.vertex;
-
-    // const position = cmap.getAttribute(cmap.vertex, "position");
-    // const ref = cmap.getAttribute(cmap.vertex, "<refs>");
-    // let buff = cmap.getAttribute(cmap.dart, "<emb_1>");
-    // buff = cmap.getAttribute(cmap.dart, "<topo_d>");
-    // buff = cmap.getAttribute(cmap.dart, "<topo_phi1>");
-    // buff = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
-    // buff = cmap.getAttribute(cmap.dart, "<topo_phi2>");
-    // console.log(buff);
-
-    // cmap.foreach(cmap.face, fid => {
-    //     const instanceId = cmap.getAttribute(cmap.dart, "<topo_d>");
-    //     const idFace = instanceId[cmap.cell(cmap.vertex, fid)];
-    //     position[idFace];
-    // });
 
     viewer.setMesh(dataHandler.mesh);
     reset();
@@ -273,16 +251,6 @@ function reset(){
     // viewer.clearVertexNormals();
 }
 
-///////////////////////////////////////////////
-// Set GUI if selected vertex has been changed
-function vertexHasBeenChanged(){
-    const transform = viewer.vertexTransform();
-    if(transform){
-        guiParams.positionX = (transform.x);
-        guiParams.positionY = (transform.y);
-        guiParams.positionZ = (transform.z);
-    }
-}
 
 ///////////////////////////////////////////////
 // Initialize mouse movement listener
@@ -311,7 +279,6 @@ function listner() {
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
             // console.log(mousePsoition);
             viewer.selectMesh(mousePsoition);
-            vertexHasBeenChanged();
         }
     });
 }

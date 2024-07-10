@@ -80,97 +80,145 @@ class GenCatmullClark {
 
     saveAllNewVertices(vertices){
         this.vertices = {...vertices};
+		// vertecies.map(vd=>{return cmpa.cell(vertex, vd)})
     }
 
     buildTopology(cmap){
-        const faceVerticesCache = [];
-	    const edgeVerticesCache = [];
         quadrangulateAllFaces(cmap, 
-            vd => {
-                faceVerticesCache.push(vd);
-            },
-            vd => {
-                edgeVerticesCache.push(vd);
-            });
-            
-        this.edgeVertices = {...faceVerticesCache};
-        this.faceVertices = {...edgeVerticesCache};
-        this.saveAllNewVertices(cmap.cache(cmap.vertex));
-    }
-
-
-    calculateWeights(cmap){
-        const vertex = cmap.vertex;
-		const edge = cmap.edge;
-		const face = cmap.face;
+			/// on coupe toutes les aretes en deux
+			vd => { 
+				edgeVerticesCache.push(vd);
+	
+	
+				/// initialisation des poids du nouveau sommet arête
+				const vid = cmap.cell(vertex, vd);
+	
+	
+				/// poids initiaux : sommet arete == milieu de l'arete initiale
+				const weightEdge = {};
+				weightEdge[cmap.cell(vertex, cmap.phi1[vd])] = 0.5;
+				weightEdge[cmap.cell(vertex, cmap.phi_1[vd])] = 0.5;
+	
+	
+				weights[vid] = weightEdge;
+			},
+			/// on coupe toutes les faces en quads
+			vd => { 
+				faceVerticesCache.push(vd);
+	
+	
+				// initialisation des poids du nouveau sommet face
+				const vid = cmap.cell(vertex, vd);
+				const n = cmap.degree(vertex, vd);
+	
+	
+				/// poids initiaux : sommet face = moyenne des points initiaux, ou des points aretes
+				/// -> on somme tout les poids des points aretes autour
+				const weightFace = {};
+	
+	
+				let d0 = vd; 
+				do {
+					d0 = cmap.phi2[d0];
+					const vid1 = cmap.cell(vertex, d0);
+					const weightEdge = weights[vid1];
+	
+	
+					for(const [vid2, w] of Object.entries(weightEdge)) {
+						weightFace[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+						weightFace[vid2] += w / n; 
+					}
 		
-		const weightsCache = {}
-
-		//contiennet des brins
-		const initVerticesCache = cmap.cache(vertex);
-		let faceVerticesCache = [];
-		let edgeVerticesCache = [];
-			
-		Object.assign(initVerticesCache, this.initialVertices);
-		Object.assign(edgeVerticesCache, this.edgeVertices);
-		Object.assign(faceVerticesCache, this.faceVertices);
-
-		cmap.foreach(vertex, vd => {
-			weightsCache[cmap.cell(vertex, vd)] = {};
+					d0 = cmap.phi1[d0];	
+				} while (d0 != vd)
+	
+	
+				weights[vid] = weightFace;
 		});
-
-		for(const [id, vd] of Object.entries(this.initialVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const n = cmap.degree(vertex, vd);
-			let d0 = vd;
-			let d1 = d0;
-			do {
-				d1 = cmap.phi1[d0]
-				weightsCache[vid][cmap.cell(vertex, d1)] = 2 / (n*n);
-
-				d1 = cmap.phi1[d1]
-				weightsCache[vid][cmap.cell(vertex, d1)] = 1 / (n*n);
-
-				d0 = cmap.phi1[cmap.phi2[d0]];
-
-			} while (d0 != vd)
-
-			weightsCache[vid][vid] = (n - 3)/n;
-			
-		}
-
+	
+	
+		/// parcourt des sommets initiaux pour compléter les poids
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			let d = vd;
-			do {
-				d = cmap.phi2[d];
-				weightsCache[vid][cmap.cell(vertex, d)] = 0.25;
-				d = cmap.phi1[d];	
-			} while (d != vd)
-				
-		}, {cache: edgeVerticesCache})
-			
-			
-		cmap.foreach(vertex, vd => {
-			const vid = cmap.cell(vertex, vd);
-
 			const n = cmap.degree(vertex, vd);
-
+			const n2 = n * n;
+	
+	
 			let d0 = vd;
-			let d1 = d0;
+			// let d1 = d0;
+			const weightInit = {};
+			weightInit[vid] = (n - 3) / n;
+	
+	
 			do {
+				console.log(d0)
 				d0 = cmap.phi2[d0];
-				d1 = cmap.phi_1[d0]
-				weightsCache[vid][cmap.cell(vertex, d1)] = 1 / n;
-
-				d0 = cmap.phi1[d0];	
+				console.log(d0)
+				const vidEdge = cmap.cell(vertex, d0);
+				const weightEdge = weights[vidEdge];
+	
+	
+				const vidFace = cmap.cell(vertex, cmap.phi_1[d0]);
+				const weightFace = weights[vidFace];
+	
+	
+				for(const [vid2, w] of Object.entries(weightEdge)) {
+					weightInit[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+					weightInit[vid2] += 2 * w / n2; 
+				}
+	
+	
+				for(const [vid2, w] of Object.entries(weightFace)) {
+					weightInit[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+					weightInit[vid2] += w / n2; 
+				}
+	
+	
+				d0 = cmap.phi1[d0];
+	
+	
 			} while (d0 != vd)
+	
+	
+			weights[vid] = weightInit;
 			
-		}, {cache: faceVerticesCache})
-
-        this.weights = {...weightsCache};        
-
+		}, {cache: initVerticesCache})
+	
+	
+	
+	
+		/// parcourt des sommets aretes pour compléter les poids
+		cmap.foreach(vertex, vd => {
+			const vidEdge = cmap.cell(vertex, vd);
+			const weightEdge = weights[vidEdge];
+	
+	
+			for(const [vid2, w] of Object.entries(weightEdge)) {
+				weightEdge[vid2] = w / 2; 
+			}
+			
+			const vidFace0 = cmap.cell(vertex, cmap.phi_1[vd]);
+			const vidFace1 = cmap.cell(vertex, cmap.phi2[cmap.phi1[cmap.phi2[vd]]]);
+			const weightFace0 = weights[vidFace0];
+			const weightFace1 = weights[vidFace1];
+	
+	
+			for(const [vid2, w] of Object.entries(weightFace0)) {
+				weightEdge[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+				weightEdge[vid2] += w / 4; 
+			}
+	
+	
+			for(const [vid2, w] of Object.entries(weightFace1)) {
+				weightEdge[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+				weightEdge[vid2] += w / 4; 
+			}
+			
+		}, {cache: edgeVerticesCache})
+	
+		this.weights = {...this.weights}
     }
+
 
 	buildGeometry(cmap){
 		const vertex = cmap.vertex;

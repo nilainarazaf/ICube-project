@@ -5,6 +5,7 @@ import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
 export default function catmullClark(cmap, generation = 0){		
 	const gen = new GenCatmullClark(cmap, generation);
 	return gen;
+
 }
 
 

@@ -2,6 +2,7 @@
 import * as THREE from './CMapJS/Libs/three.module.js';
 import Renderer from './CMapJS/Rendering/Renderer.js';
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
+import { TransformControls } from './CMapJS/Libs/TransformControls.js';
 
 export default class Viewer {
 	#renderer; // WebGL renderer
@@ -14,12 +15,13 @@ export default class Viewer {
 
 	#mesh; // The mesh object
 	#meshRenderer; // Renderer for the mesh
+	#meshColor;
 
 	#originalEdges;
 
 	#faceNormals; // Array to store face normals
 	#vertexNormals; // Array to store vertex normals
-	#vertices = []; // Array to store vertex positions
+	#vertices = {}; // Array to store vertex positions
 
 	#firstIteration = true; // Flag for the first iteration
 	#intersected; // Variable to store the intersected object
@@ -27,9 +29,15 @@ export default class Viewer {
 	#selected;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
+	#hasBeenChanged = [];
+	#transformVector = [];
+	#positions_init = [];
+
 	catmullClarkGenerations = [];
 
 	transformVectorBuffer = {};
+
+	transformControls;
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -67,6 +75,11 @@ export default class Viewer {
 
 		// const DLH = new THREE.DirectionalLightHelper(dirL, 5);
 		// this.#scene.add(DLH);
+
+		// Ajout d'un contrôleur de transformation
+		const transformControls = new TransformControls(this.#camera, this.#renderer.domElement);
+		this.transformControls = transformControls;
+		this.#scene.add(transformControls);
 	}
 
 	// Render the scene
@@ -93,6 +106,24 @@ export default class Viewer {
 		// initialize original mesh, only edges
 		if(!this.#originalEdges) this.#originalEdges = this.#meshRenderer.edges;
 
+		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		this.#positions_init = Object.assign(position);
+		// this.#positions_init = position.clone(true);
+
+		if (this.#mesh) {
+			this.#mesh.foreach(this.#mesh.vertex, vId => {
+				this.#hasBeenChanged.push(false);
+				this.#transformVector.push(new THREE.Vector3());
+			});
+		}
+
+		// const transform = this.#mesh.addAttribute(this.#mesh.vertex, 'transforme');
+		// if (this.#mesh) {
+		// 	this.#mesh.foreach(this.#mesh.vertex, vId => {
+		// 		transform.push(null);
+		// 	});
+		// }
+		// console.log(transform);
 	}
 
 	// Set the mesh and initialize the renderer
@@ -234,40 +265,76 @@ export default class Viewer {
 		this.render();
 	}
 
+	// Add a line to the scene
+	// addLine(from, to) {
+	// 	const line = [];
 
+	// 	if (from == null) {
+	// 		line.push(new THREE.Vector3(0, 0, 0));
+	// 	} else {
+	// 		line.push(from);
+	// 	}
+	// 	line.push(to);
+
+	// 	const material = new THREE.LineBasicMaterial({ color: 0x0 });
+	// 	const geometry = new THREE.BufferGeometry().setFromPoints(line);
+	// 	this.#scene.add(new THREE.Line(geometry, material));
+	// 	this.render();
+	// }
+
+	// Show vertices as dots
 	showVertices() {
 		if (this.#mesh) {
+			const geometry = new THREE.SphereGeometry(0.01, 32, 32);
+			const material = new THREE.MeshStandardMaterial();
+	
+			const count = this.#mesh.nbCells(this.#mesh.vertex);
+			const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+			
+			console.log(instancedMesh);
+	
+			const matrix = new THREE.Matrix4();
 			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+	
+			const verticesIndex = [];
+			// const colors = [];
+	
 			this.#mesh.foreach(this.#mesh.vertex, vId => {
-				this.showVertex(position[this.#mesh.cell(this.#mesh.vertex, vId)], vId);
+				const indexPos = this.#mesh.cell(this.#mesh.vertex, vId);
+				const pos = position[indexPos];
+	
+				matrix.makeTranslation(pos.x, pos.y, pos.z);
+				instancedMesh.setMatrixAt(indexPos, matrix);
+				
+				let color = new THREE.Color(0x0000ff);
+				
+				instancedMesh.setColorAt(indexPos, color);
+	
+				verticesIndex.push(vId);
 			});
+	
+			instancedMesh.verticesIndex = verticesIndex;
+			instancedMesh.instanceColor.needsUpdate = true;
+			
+			this.#vertices = instancedMesh;
+			this.#scene.add(instancedMesh);
+
+			
+
 		}
+		this.render();
 	}
+	
 
 	// Clear vertices dots
 	clearVertices() {
 		if (this.#vertices) {
-			this.#vertices.forEach(vertex => {
-				this.#scene.remove(vertex);
-			});
-			this.#vertices = [];
+			this.#scene.remove(this.#vertices);
+			this.#vertices = null;
 		}
 		this.render();
 	}
 
-	// Show a single vertex as a dot
-	showVertex(dot, index) {
-		const geometry = new THREE.SphereGeometry(0.01, 32, 32);
-		const material = new THREE.MeshStandardMaterial({ color: 0xbb0000 });
-
-		const sphere = new THREE.Mesh(geometry, material);
-		sphere.vertexIndex = index;
-		sphere.position.copy(dot);
-
-		this.#vertices.push(sphere);
-		this.#scene.add(sphere);
-		this.render();
-	}
 
 	// Show the original edges
 	showOriginalEdges(){
@@ -298,19 +365,30 @@ export default class Viewer {
 		this.#raycaster.setFromCamera(pointer, this.#camera);
 
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
-		
+
 		let id = 0;
-		if ( intersects.length > 0 ) {
-			if(this.#vertices.includes(intersects[ 0 ].object)){
-				if ( (this.#intersected != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#selected) && this.#selected) ) {
-					if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex );
-					this.#intersected = intersects[ 0 ].object;
-					this.#intersected.currentHex = this.#intersected.material.emissive.getHex();
-					this.#intersected.material.emissive.setHex( 0xff0000 );
-				}
+		if(this.#vertices == intersects[ 0 ]?.object){
+			const instanceId = intersects[0].instanceId;
+			if ( (this.#intersected != intersects[ 0 ].object) || ((intersects[ 0 ].object != this.#selected) && this.#selected) ) {
+				if ( this.#intersected ) this.#intersected.setColorAt( instanceId, this.#intersected.currentHex );
+				this.#intersected = intersects[ 0 ].object;
+				this.#intersected.instanceId = instanceId;
+				
+				this.#intersected.currentHex = new THREE.Color();
+				this.#intersected.getColorAt( instanceId, this.#intersected.currentHex );
+
+				if(!this.#selected) this.#intersected.originalColor = this.#intersected.currentHex.clone();
+
+				const color = new THREE.Color(0xbb0000);
+				this.#intersected.setColorAt( instanceId, color );
+
+				this.#intersected.instanceColor.needsUpdate = true; 
 			}
 		} else {
-			if ( this.#intersected ) this.#intersected.material.emissive.setHex( this.#intersected.currentHex ); 
+			if ( this.#intersected ) {
+				this.#intersected.setColorAt( this.#intersected.instanceId, this.#intersected.currentHex );
+				this.#intersected.instanceColor.needsUpdate = true;
+			}
 			this.#intersected = null;
 		}
 		this.render();
@@ -324,32 +402,78 @@ export default class Viewer {
 		
 		let id = 0;
 		// console.log(intersects);
-		if ( intersects.length > 0 ) {
-			if(this.#vertices.includes(intersects[ 0 ].object)){
-				// console.log("Selected");
-				if ( this.#selected != intersects[ 0 ].object ) {
-					if ( this.#selected ) this.#selected.material.emissive.setHex( 0 );
-					this.#selected = intersects[ 0 ].object;
-					this.#selected.material.emissive.setHex( 0xcccccc );
-					if(this.#intersected == this.#selected) {
-						this.#intersected.currentHex = this.#selected.material.emissive.getHex();
-					}
+		if(this.#vertices == intersects[ 0 ]?.object){
+			// console.log("Selected");
+			const instanceId = intersects[0].instanceId;
+			if ( this.#selected != intersects[ 0 ].object ) {
+				if ( this.#selected ) this.#selected.setColorAt( instanceId, this.#selected.originalColor );
+				this.#selected = intersects[ 0 ].object;
+				
+				this.#selected.instanceId = instanceId;
+				const color = new THREE.Color(0xcccccc);
+				this.#selected.setColorAt( instanceId, color );
+								
+				if(this.#intersected == this.#selected) {
+					this.#selected.originalColor = this.#intersected.originalColor
+					this.#intersected.currentHex = color;
 				}
+
+
+				this.#selected.instanceColor.needsUpdate = true;
+
+				const dummy = this.selectInstance(instanceId);
+				this.#selected.dummy = dummy;
 			}
 		} else {
 			// console.log("Deselected");
 			if ( this.#selected ) {
-				this.#selected.material.emissive.setHex( 0 );
+				this.#selected.setColorAt( this.#selected.instanceId, this.#selected.originalColor );
+				this.#selected.instanceColor.needsUpdate = true; 
+
+				this.transformControls.detach();
+				this.#scene.remove(this.#selected.dummy);
+				this.#scene.remove(this.transformControls);
 			}
 			this.#selected = null;
 		}
 		this.render();
 	}
 
+	// Fonction pour sélectionner et manipuler une instance spécifique
+	selectInstance(index) {
+		const instancedMesh = this.#selected;
+		const dummy = new THREE.Object3D();
+		this.#scene.add(dummy);
+		// Copier la matrice de l'instance vers le dummy
+		instancedMesh.getMatrixAt(index, dummy.matrix);
+		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+		
+		// Attacher TransformControls au dummy
+		this.transformControls.attach(dummy);
+		
+		// Mettre à jour la matrice de l'instance lorsque TransformControls change
+		this.transformControls.addEventListener('change', () => {
+			dummy.updateMatrix();
+			instancedMesh.setMatrixAt(index, dummy.matrix);
+			instancedMesh.instanceMatrix.needsUpdate = true;
+
+			const pos = dummy.position
+			const newPos = new THREE.Vector3(pos.x, pos.y, pos.z);
+			this.changeVertexPosition(newPos)
+
+			// instancedMesh.getMatrixAt(index, dummy.matrix);
+			// dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+			// dummy.updateMatrix();
+
+		});
+		return dummy;
+	}
+
 	// transform selected vertex
 	changeVertexPosition(transformVector){
 		
-		const vertexIndex = this.#selected.vertexIndex;
+		const vertexIndex = this.#selected.verticesIndex[this.#selected.instanceId];
+		console.log(vertexIndex)
 
 		const positionIndex = this.#mesh.cell(this.#mesh.vertex, vertexIndex)
 		
@@ -391,13 +515,22 @@ export default class Viewer {
 		this.render();
 	}
 
+	// If selected vertex has been changed
+	vertexTransform(){
+		if(this.#selected){
+			const vertexIndex = this.#selected.vertexIndex;
+			if(this.#hasBeenChanged[vertexIndex]){
+				return this.#transformVector[vertexIndex];
+			}
+		}
+	}
+
 	updateCurrentPosition(){
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		for(const [id, vd] of Object.entries(this.transformVectorBuffer)) {
 			position[id].add(vd);
 		}
 	}
-	
 
 	genCatmullClark(gen){
         this.catmullClarkGenerations.push(gen);

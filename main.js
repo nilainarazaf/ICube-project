@@ -46,7 +46,7 @@ const guiParams = {
     faceOpacity: 1,
     edgeOpacity: 1,
 	faceNormals: false,
-    showVertices: false,
+    showVertices: true,
     showEdges: true,
     color: 0x0099FF,
 
@@ -158,6 +158,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
             const gen = CatmullClark(dataHandler.mesh, 0);
             viewer.setMesh(dataHandler.mesh);
             viewer.genCatmullClark(gen);
+            reset();
         };
         reader.readAsText(file);
     }
@@ -196,6 +197,7 @@ function applyCatmullClark(iteration = 1) {
     let vertex = cmap.vertex;
 
     viewer.setMesh(dataHandler.mesh);
+
     reset();
     render();
 };

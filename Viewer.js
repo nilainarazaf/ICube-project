@@ -9,6 +9,8 @@ export default class Viewer {
 	#scene; // Three.js scene
 	#camera; // Perspective camera
 	#helpers; // Group for helper objects
+	#transformControls;
+	#orbitControls;
 
 	#ambientLight; // Ambient light in the scene
 	#pointLight; // Point light in the scene
@@ -29,15 +31,11 @@ export default class Viewer {
 	#selected;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
-	#hasBeenChanged = [];
-	#transformVector = [];
-	#positions_init = [];
+	#catmullClarkGenerations = [];
+	#transformVectorCache = {};
+	
 
-	catmullClarkGenerations = [];
-
-	transformVectorBuffer = {};
-
-	transformControls;
+	#transformVectorBuffer;
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -62,7 +60,7 @@ export default class Viewer {
 		this.#scene.add(pointLight);
 
 		// Add orbit controls
-		new OrbitControls(this.#camera, this.#renderer.domElement);
+		this.#orbitControls = new OrbitControls(this.#camera, this.#renderer.domElement);
 
 		// Add helpers (axes helper and directional light helper)
 		this.#helpers = new THREE.Group();
@@ -78,7 +76,7 @@ export default class Viewer {
 
 		// Ajout d'un contrôleur de transformation
 		const transformControls = new TransformControls(this.#camera, this.#renderer.domElement);
-		this.transformControls = transformControls;
+		this.#transformControls = transformControls;
 		this.#scene.add(transformControls);
 	}
 
@@ -106,24 +104,6 @@ export default class Viewer {
 		// initialize original mesh, only edges
 		if(!this.#originalEdges) this.#originalEdges = this.#meshRenderer.edges;
 
-		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		this.#positions_init = Object.assign(position);
-		// this.#positions_init = position.clone(true);
-
-		if (this.#mesh) {
-			this.#mesh.foreach(this.#mesh.vertex, vId => {
-				this.#hasBeenChanged.push(false);
-				this.#transformVector.push(new THREE.Vector3());
-			});
-		}
-
-		// const transform = this.#mesh.addAttribute(this.#mesh.vertex, 'transforme');
-		// if (this.#mesh) {
-		// 	this.#mesh.foreach(this.#mesh.vertex, vId => {
-		// 		transform.push(null);
-		// 	});
-		// }
-		// console.log(transform);
 	}
 
 	// Set the mesh and initialize the renderer
@@ -188,24 +168,10 @@ export default class Viewer {
 			geometry.computeFaceNormals();
 			this.#faceNormals = [];
 
-			// const phi1 = cmap.getAttribute(cmap.dart, "<topo_phi_1>");
-			// this.#mesh.foreach(this.#mesh.face, fId => {
-			// 	console.log(fId);
-			// 	const vertexIndex = this.#mesh.cell(this.#mesh.vertex, fId);
-			// 	while(vertexIndex != fId){
-
-			// 	}
-			// });
-
 			geometry.faces.forEach(face => {
 				const centroid = new THREE.Vector3(0, 0, 0);
 				
 				let id = 0;
-				// this.#mesh.cell(vertex, cmap.phi1[d]);
-				// this.#mesh.foreachDartOf(this.#mesh.vertex, vd, d => {
-				// 	console.log("sommet["+cmap.cell(vertex, cmap.phi2[d])+"] :: ");
-				// 	console.log(pos[cmap.cell(vertex, cmap.phi2[d])]);
-				// })
 
 				centroid.add(geometry.vertices[face.a]);
 				centroid.add(geometry.vertices[face.b]);
@@ -265,23 +231,6 @@ export default class Viewer {
 		this.render();
 	}
 
-	// Add a line to the scene
-	// addLine(from, to) {
-	// 	const line = [];
-
-	// 	if (from == null) {
-	// 		line.push(new THREE.Vector3(0, 0, 0));
-	// 	} else {
-	// 		line.push(from);
-	// 	}
-	// 	line.push(to);
-
-	// 	const material = new THREE.LineBasicMaterial({ color: 0x0 });
-	// 	const geometry = new THREE.BufferGeometry().setFromPoints(line);
-	// 	this.#scene.add(new THREE.Line(geometry, material));
-	// 	this.render();
-	// }
-
 	// Show vertices as dots
 	showVertices() {
 		if (this.#mesh) {
@@ -290,8 +239,7 @@ export default class Viewer {
 	
 			const count = this.#mesh.nbCells(this.#mesh.vertex);
 			const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-			
-			console.log(instancedMesh);
+		
 	
 			const matrix = new THREE.Matrix4();
 			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
@@ -299,27 +247,24 @@ export default class Viewer {
 			const verticesIndex = [];
 			// const colors = [];
 	
-			this.#mesh.foreach(this.#mesh.vertex, vId => {
-				const indexPos = this.#mesh.cell(this.#mesh.vertex, vId);
-				const pos = position[indexPos];
+			position.forEach( (pos, id) => {
 	
 				matrix.makeTranslation(pos.x, pos.y, pos.z);
-				instancedMesh.setMatrixAt(indexPos, matrix);
+				instancedMesh.setMatrixAt(id, matrix);
 				
 				let color = new THREE.Color(0x0000ff);
 				
-				instancedMesh.setColorAt(indexPos, color);
+				instancedMesh.setColorAt(id, color);
 	
-				verticesIndex.push(vId);
+				verticesIndex.push(id);
 			});
 	
-			instancedMesh.verticesIndex = verticesIndex;
+			instancedMesh.verticesIndexPosition = verticesIndex;
 			instancedMesh.instanceColor.needsUpdate = true;
+			// console.log("=>",instancedMesh)
 			
 			this.#vertices = instancedMesh;
 			this.#scene.add(instancedMesh);
-
-			
 
 		}
 		this.render();
@@ -413,26 +358,28 @@ export default class Viewer {
 				const color = new THREE.Color(0xcccccc);
 				this.#selected.setColorAt( instanceId, color );
 								
-				if(this.#intersected == this.#selected) {
-					this.#selected.originalColor = this.#intersected.originalColor
-					this.#intersected.currentHex = color;
-				}
+				if(this.#intersected == intersects[ 0 ]?.object)this.#selected.originalColor = this.#intersected.originalColor.clone()
+				this.#intersected.currentHex = color;
 
 
 				this.#selected.instanceColor.needsUpdate = true;
 
 				const dummy = this.selectInstance(instanceId);
 				this.#selected.dummy = dummy;
+				// console.log(this.#selected.originalColor)
 			}
-		} else {
-			// console.log("Deselected");
+		} else if(intersects[ 0 ]) {
+			console.log("Deselected");
+			console.log(this.#selected)
 			if ( this.#selected ) {
+				console.log(this.#selected.instanceId, this.#selected.originalColor)
 				this.#selected.setColorAt( this.#selected.instanceId, this.#selected.originalColor );
 				this.#selected.instanceColor.needsUpdate = true; 
 
-				this.transformControls.detach();
+				this.#transformControls.detach();
 				this.#scene.remove(this.#selected.dummy);
-				this.#scene.remove(this.transformControls);
+				this.#selected.dummy = null;
+				this.#transformVectorBuffer = null;
 			}
 			this.#selected = null;
 		}
@@ -440,65 +387,93 @@ export default class Viewer {
 	}
 
 	// Fonction pour sélectionner et manipuler une instance spécifique
-	selectInstance(index) {
+	selectInstance(instanceId) {
 		const instancedMesh = this.#selected;
+
+		const indexPos = instancedMesh.verticesIndexPosition[instanceId];
+		// console.log(indexPos, instanceId, instancedMesh.verticesIndexPosition)
+
 		const dummy = new THREE.Object3D();
 		this.#scene.add(dummy);
+
 		// Copier la matrice de l'instance vers le dummy
-		instancedMesh.getMatrixAt(index, dummy.matrix);
+		instancedMesh.getMatrixAt(instanceId, dummy.matrix);
 		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 		
 		// Attacher TransformControls au dummy
-		this.transformControls.attach(dummy);
+		this.#transformControls.attach(dummy);
 		
 		// Mettre à jour la matrice de l'instance lorsque TransformControls change
-		this.transformControls.addEventListener('change', () => {
+		this.#transformControls.addEventListener('change', () => {
+			// console.log("instancedMesh //", instanceId)
+			let position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+			// console.log(position)
+			
+			if(!this.#transformVectorBuffer){
+				this.#transformVectorBuffer = new THREE.Vector3(0,0,0);
+			}
+
+			// console.log(position[indexPos],this.#transformVectorBuffer)
+			const resetPos = this.#transformVectorBuffer.clone().negate();
+			this.changeVertexPosition(resetPos)
+			// console.log("reset transformationnnnnnnnn ::",resetPos)
+
+
 			dummy.updateMatrix();
-			instancedMesh.setMatrixAt(index, dummy.matrix);
+
+			// pour que le mesh suit le dummy
+			instancedMesh.setMatrixAt(instanceId, dummy.matrix);
 			instancedMesh.instanceMatrix.needsUpdate = true;
-
+			
 			const pos = dummy.position
-			const newPos = new THREE.Vector3(pos.x, pos.y, pos.z);
-			this.changeVertexPosition(newPos)
+			const transform = new THREE.Vector3(pos.x, pos.y, pos.z);
 
-			// instancedMesh.getMatrixAt(index, dummy.matrix);
-			// dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-			// dummy.updateMatrix();
-
+			transform.sub(position[indexPos]);
+			
+			// console.log("new",transform)
+			this.#transformVectorBuffer = transform;
+			this.changeVertexPosition(transform)
+			// console.log("trasns transformationnnnnnnnn ::",transform)
+		
+			
 		});
+		this.#transformControls.addEventListener('mouseDown', () => {
+			this.#orbitControls.enableRotate = false;
+		})
+		this.#transformControls.addEventListener('mouseUp', () => {
+			this.#orbitControls.enableRotate = true;
+		})
 		return dummy;
 	}
 
 	// transform selected vertex
 	changeVertexPosition(transformVector){
 		
-		const vertexIndex = this.#selected.verticesIndex[this.#selected.instanceId];
-		console.log(vertexIndex)
-
-		const positionIndex = this.#mesh.cell(this.#mesh.vertex, vertexIndex)
+		const positionIndex = this.#selected.verticesIndexPosition[this.#selected.instanceId];
 		
 		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
 		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
 
-		let genToUpdate = indexGeneration[vertexIndex];
+		let genToUpdate = indexGeneration[positionIndex];
 		genToUpdate++; // on met a jour la prochaine generation
 
-		if(genToUpdate == this.catmullClarkGenerations.length){
-			this.transformVectorBuffer[vertexIndex] = transformVector;
-		}
+		// if(genToUpdate == this.#catmullClarkGenerations.length){
+		// 	this.#transformVectorCache[vertexIndex] = transformVector;
+		// }
+		// console.log("posId",positionIndex);
 		
 
-		if(this.catmullClarkGenerations.length > 0 && genToUpdate < this.catmullClarkGenerations.length){
+		if(this.#catmullClarkGenerations.length > 0 && genToUpdate < this.#catmullClarkGenerations.length){
 			
-			if(genToUpdate == 1 && this.catmullClarkGenerations.length == 1){
+			if(genToUpdate == 1 && this.#catmullClarkGenerations.length == 1){
 				genToUpdate = 0;
 			}
 			
-			this.catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
-			this.catmullClarkGenerations[genToUpdate].toTransform = true;
-			while (genToUpdate < this.catmullClarkGenerations.length) {
-				this.catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
+			this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
+			this.#catmullClarkGenerations[genToUpdate].toTransform = true;
+			while (genToUpdate < this.#catmullClarkGenerations.length) {
+				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
 				genToUpdate++;
 			}
 
@@ -515,25 +490,10 @@ export default class Viewer {
 		this.render();
 	}
 
-	// If selected vertex has been changed
-	vertexTransform(){
-		if(this.#selected){
-			const vertexIndex = this.#selected.vertexIndex;
-			if(this.#hasBeenChanged[vertexIndex]){
-				return this.#transformVector[vertexIndex];
-			}
-		}
+	getCatmullClarkGenerations(){
+        return this.#catmullClarkGenerations ? this.#catmullClarkGenerations : [];
 	}
-
-	updateCurrentPosition(){
-		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		for(const [id, vd] of Object.entries(this.transformVectorBuffer)) {
-			position[id].add(vd);
-		}
-	}
-
-	genCatmullClark(gen){
-        this.catmullClarkGenerations.push(gen);
-		// console.log(this.catmullClarkGenerations);
+	setCatmullClarkGenerations(gen){
+        this.#catmullClarkGenerations = gen;
 	}
 }

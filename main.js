@@ -153,11 +153,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
             guiParams.content = `File content: ${content}`;
             dataHandler.loadMeshFromString(content);
             viewer.initializeMeshRenderer(dataHandler.mesh);
-            
-            // Set generation
-            const gen = CatmullClark(dataHandler.mesh, 0);
-            viewer.setMesh(dataHandler.mesh);
-            viewer.genCatmullClark(gen);
+            applyCatmullClark()
             reset();
         };
         reader.readAsText(file);
@@ -183,19 +179,15 @@ function saveFile() {
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
 function applyCatmullClark(iteration = 1) {
-    let generationIndex = 1;
-        
-    generationIndex = viewer.catmullClarkGenerations.length;
 
-    const gen = CatmullClark(dataHandler.mesh, generationIndex);
-    viewer.setMesh(dataHandler.mesh);
-    viewer.genCatmullClark(gen);
+    let generations = viewer.getCatmullClarkGenerations();
+
     
-    reset();
-
-    const cmap = dataHandler.mesh;
-    let vertex = cmap.vertex;
-
+    const gen = CatmullClark(dataHandler.mesh, generations);
+    console.log(gen)
+    
+    viewer.setCatmullClarkGenerations(gen);
+    
     viewer.setMesh(dataHandler.mesh);
 
     reset();

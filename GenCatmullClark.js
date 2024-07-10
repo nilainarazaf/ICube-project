@@ -7,17 +7,12 @@ class GenCatmullClark {
 	toTransform = false;
 
     initialVertices;
-    edgeVertices;
-    faceVertices;
-
-	phi2;
-	phi_1;
 
     weights;
 
     vertices;
 
-	initialPosition
+	initialPosition;
     transforms;
 
 	constructor(cmap, generation = 0) {
@@ -58,8 +53,6 @@ class GenCatmullClark {
 
 			this.buildTopology(cmap);
 			
-			this.calculateWeights(cmap);
-			
 			this.buildGeometry(cmap);
 			
 			cmap.foreach(cmap.vertex, vd => {
@@ -70,20 +63,26 @@ class GenCatmullClark {
 
 		}
 
-		this.phi2 = {...cmap.phi2}
-		this.phi_1 = {...cmap.phi_1}
-
-		this.initTransform(cmap);
+		this.transforms = {}
+		for(const [vd, pos] of Object.entries(this.initialPosition)) {
+			this.transforms[vd] = new Vector3();
+		};
 		
 
 	}
 
     saveAllNewVertices(vertices){
         this.vertices = {...vertices};
-		// vertecies.map(vd=>{return cmpa.cell(vertex, vd)})
     }
 
     buildTopology(cmap){
+		const vertex = cmap.vertex;
+
+		const initVerticesCache = cmap.cache(vertex);
+		const edgeVerticesCache = []
+		const faceVerticesCache = []
+		const weights = [];
+
         quadrangulateAllFaces(cmap, 
 			/// on coupe toutes les aretes en deux
 			vd => { 
@@ -215,8 +214,8 @@ class GenCatmullClark {
 			}
 			
 		}, {cache: edgeVerticesCache})
-	
-		this.weights = {...this.weights}
+		
+		this.weights = {...weights}
     }
 
 
@@ -224,9 +223,6 @@ class GenCatmullClark {
 		const vertex = cmap.vertex;
 		const edge = cmap.edge;
 		const face = cmap.face;
-
-		let weightsCache = {}
-		weightsCache = Object.assign(this.weights);
 
 		const position = cmap.getAttribute(vertex, "position");
 
@@ -237,43 +233,10 @@ class GenCatmullClark {
 			nextGenPosition[vid] = new Vector3();
 		});
 		
-		for(const [id, vd] of Object.entries(this.faceVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			for(const [vid2, w] of Object.entries(weight)) {
-				nextGenPosition[vid].addScaledVector(position[vid2], w);
+		for(const [idNewPos, influate] of Object.entries(this.weights)) {
+			for(const [idOldPos, w] of Object.entries(influate)) {
+				nextGenPosition[idNewPos].addScaledVector(position[idOldPos], w);
 			}
-		}
-		
-		for(const [id, vd] of Object.entries(this.edgeVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			
-			let d0 = cmap.phi2[vd];
-			let d1 = cmap.phi_1[cmap.phi2[cmap.phi_1[vd]]];
-			
-			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d0)], 0.5);
-			nextGenPosition[vid].addScaledVector(position[cmap.cell(vertex, d1)], 0.5);
-			
-		}
-		
-		for(const [id, vd] of Object.entries(this.initialVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			
-			for(const [vid2, w] of Object.entries(weight)) {
-				nextGenPosition[vid].addScaledVector(position[vid2] ?? nextGenPosition[vid2], w);
-			}
-			
-		}
-		
-		for(const [id, vd] of Object.entries(this.edgeVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			nextGenPosition[vid].set(0, 0, 0)
-			for(const [vid2, w] of Object.entries(weight)) {
-				nextGenPosition[vid].addScaledVector(position[vid2] ?? nextGenPosition[vid2], w);
-			}
-			
 		}
 
 		cmap.foreach(vertex, vd => {
@@ -283,13 +246,6 @@ class GenCatmullClark {
 		});
 
 		this.currentPosition = {...nextGenPosition};
-	}
-
-	initTransform(cmap){
-		this.transforms = {}
-		for(const [vd, pos] of Object.entries(this.initialPosition)) {
-			this.transforms[vd] = new Vector3();
-		};
 	}
 
 	addTransform(positionIndex, transformVector){
@@ -313,84 +269,11 @@ class GenCatmullClark {
 		}
 
 		if(this.generationId != 0) {
-			this.updateNextGen(cmap);
+			this.buildGeometry(cmap);
 		}
 
 		this.toTransform = false;
 	}
 
-
-
-	updateNextGen(cmap){
-		const vertex = cmap.vertex;
-		const edge = cmap.edge;
-		const face = cmap.face;
-
-		let weightsCache = {}
-		weightsCache = Object.assign(this.weights);
-		
-		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
-			
-		console.log("position", currentPosition)
-		const positionCache = {}
-		const nextGenPosition = {} 
-
-		for(const [id, vd] of Object.entries(this.initialVertices)) {
-			positionCache[id] = new Vector3();
-			positionCache[id].copy(currentPosition[id])
-		}
-
-		for(const [id, vd] of Object.entries(this.vertices)) {
-			const vid = cmap.cell(vertex, vd);
-			nextGenPosition[vid] = new Vector3();
-		}
-		
-		
-		for(const [id, vd] of Object.entries(this.faceVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			for(const [vid2, w] of Object.entries(weight)) {
-				nextGenPosition[vid].addScaledVector(positionCache[vid2], w);
-			}
-		}
-		
-		for(const [id, vd] of Object.entries(this.edgeVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			
-			let d0 = this.phi2[vd];
-			let d1 = this.phi_1[this.phi2[this.phi_1[vd]]];
-			nextGenPosition[vid].addScaledVector(positionCache[cmap.cell(vertex, d0)], 0.5);
-			nextGenPosition[vid].addScaledVector(positionCache[cmap.cell(vertex, d1)], 0.5);
-			
-		}
-		
-		for(const [id, vd] of Object.entries(this.initialVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			
-			for(const [vid2, w] of Object.entries(weight)) {	
-				nextGenPosition[vid].addScaledVector(positionCache[vid2] ?? nextGenPosition[vid2], w);
-			}
-			
-		}
-		
-		for(const [id, vd] of Object.entries(this.edgeVertices)) {
-			const vid = cmap.cell(vertex, vd);
-			const weight = weightsCache[vid];
-			nextGenPosition[vid].set(0, 0, 0)
-			for(const [vid2, w] of Object.entries(weight)) {
-				nextGenPosition[vid].addScaledVector(positionCache[vid2] ?? nextGenPosition[vid2], w);
-			}
-		}
-
-		
-		for(const [id, vd] of Object.entries(this.vertices)) {
-			const vid = cmap.cell(vertex, vd);
-			currentPosition[vid] ??= new Vector3();
-			currentPosition[vid].copy(nextGenPosition[vid]);
-		};
-
-	}
 }
-
 export { GenCatmullClark }

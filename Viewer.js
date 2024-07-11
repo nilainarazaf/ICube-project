@@ -568,7 +568,7 @@ export default class Viewer {
 				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
 				genToUpdate++;
 			}
-			this.addTransformVectorCache();
+			this.updateCurrentPosition();
 
 		} else {
 			position[positionIndex].add(transformVector);
@@ -581,6 +581,15 @@ export default class Viewer {
 		this.showVertices();
 		
 		this.render();
+	}
+
+	updateCurrentPosition(){
+		if(this.#transformVectorCache){
+			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		for(const [id, vd] of Object.entries(this.#transformVectorCache)) {
+			position[id].add(vd);
+		}
+		}
 	}
 
 	addTransformVectorCache(){

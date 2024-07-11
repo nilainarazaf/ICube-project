@@ -228,16 +228,17 @@ function saveFile() {
 function applyCatmullClark(iteration = 1) {
     for (let index = 0; index < iteration; index++) {
         let generations = viewer.getCatmullClarkGenerations();
-
-        if(generations.length == 0){
-            viewer.setInitalMesh()
-        }
+        
+        // add option for latest version of shape
+        // Save original mesh.edge for 1 gen // remove if(generations.length == 1)
+        viewer.setMeshRenderer(dataHandler.mesh, true);
         
         const gen = CatmullClark(dataHandler.mesh, generations);
         
         viewer.setCatmullClarkGenerations(gen);
+        viewer.initTransformCache();
         
-        viewer.setMesh(dataHandler.mesh);
+        viewer.setMeshRenderer(dataHandler.mesh);
     }
     
     viewer.clearScene();

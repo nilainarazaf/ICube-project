@@ -183,7 +183,7 @@ class GenCatmullClark {
 
 		this.transforms = {}
 		for(const [vd, pos] of Object.entries(this.initialPosition)) {
-			this.transforms[vd] = new Vector3();
+			this.transforms[vd] = {'value':new Vector3(), 'needAdd':false}
 		};
 		
 
@@ -264,9 +264,7 @@ class GenCatmullClark {
 	
 	
 			do {
-				console.log(d0)
 				d0 = cmap.phi2[d0];
-				console.log(d0)
 				const vidEdge = cmap.cell(vertex, d0);
 				const weightEdge = weights[vidEdge];
 	
@@ -363,23 +361,25 @@ class GenCatmullClark {
 	}
 
 	addTransform(positionIndex, transformVector){
-		this.transforms[positionIndex] = transformVector;
-		console.log("poid",positionIndex)
+		this.transforms[positionIndex].value = transformVector;
+		this.transforms[positionIndex].needAdd = true;
 	}
 
 
 	updatePosition(cmap){
 
 		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
-		
-		for(const [id, transformVector] of Object.entries(this.transforms)) {
+
+		for(const [id, transform] of Object.entries(this.transforms)) {
 					
 			if(this.toTransform){
-				console.log("id",id)
-				this.initialPosition[id].add(transformVector);
+				if(transform.needAdd){
+					this.initialPosition[id].add(transform.value);
+					transform.needAdd = false;
+				}
 				currentPosition[id].copy(this.initialPosition[id]);
 			} else {
-				currentPosition[id].add(transformVector);
+				currentPosition[id].add(transform.value);
 			}
 			
 		}
@@ -389,6 +389,10 @@ class GenCatmullClark {
 		}
 
 		this.toTransform = false;
+	}
+
+
+	initTransform(){
 	}
 
 }

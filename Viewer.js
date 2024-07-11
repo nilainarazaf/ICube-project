@@ -27,7 +27,6 @@ export default class Viewer {
 	#vertexNormals; // Array to store vertex normals
 	#vertices = {}; // Array to store vertex positions
 
-	#firstIteration = true; // Flag for the first iteration
 	#intersected; // Variable to store the intersected object
 
 	#selected;
@@ -102,21 +101,16 @@ export default class Viewer {
 		this.#meshRenderer.edges.addTo(this.#scene);
 		this.#meshRenderer.faces.create();
 		this.#meshRenderer.faces.addTo(this.#scene);
-
-		// initialize original mesh, only edges
-		if(!this.#originalEdges) this.#originalEdges = this.#meshRenderer.edges;
-
+		
 	}
-
-	setInitalMesh(){
-		// this.#originalEdges = this.#mesh.edges;
-	}
-
+	
 	// Set the mesh and initialize the renderer
-	setMesh(mesh) {
-		if (this.#firstIteration) {
-			this.#firstIteration = false;
+	setMeshRenderer(mesh, original = false) {
+		
+		if (original) {
+			this.#originalEdges = this.#meshRenderer.edges;
 		} else {
+			// initialize original mesh, only edges
 			this.#meshRenderer.edges.delete();
 		}
 		this.#meshRenderer.faces.delete();
@@ -356,7 +350,9 @@ export default class Viewer {
 
 	// Show the original edges
 	showOriginalEdges(){
-		this.#originalEdges.addTo(this.#scene);
+		if(this.#originalEdges){
+			this.#originalEdges.addTo(this.#scene);
+		}
 		this.render();
 	}
 
@@ -410,7 +406,6 @@ export default class Viewer {
 		if(this.#vertices == intersects[ 0 ]?.object){
 			const instanceId = intersects[0]?.instanceId;
 			if ( ((instanceId != this.#selected?.id)) ) {
-				console.log(this.#intersected)
 				if ( this.#intersected ) this.#vertices.setColorAt( instanceId, this.#intersected.currentHex );
 				this.#intersected = {};
 				this.#intersected.id = instanceId;
@@ -442,9 +437,7 @@ export default class Viewer {
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 		
 		let id = 0;
-		// console.log(intersects);
 		if(this.#vertices == intersects[ 0 ]?.object){
-			// console.log("Selected");
 			const instanceId = intersects[0]?.instanceId;
 			if ( this.#selected?.id != instanceId ) {
 				if ( this.#selected ) this.#vertices.setColorAt( instanceId, this.#selected.originalColor );
@@ -461,12 +454,9 @@ export default class Viewer {
 
 				const dummy = this.selectInstance(instanceId);
 				this.#selected.dummy = dummy;
-				// console.log(this.#selected.originalColor)
 			}
 		} else if(intersects[ 0 ]) {
-			console.log("Deselected");
 			if ( this.#selected ) {
-				console.log(this.#selected.id, this.#selected.originalColor)
 				this.#vertices.setColorAt( this.#selected.id, this.#selected.originalColor );
 				this.#vertices.instanceColor.needsUpdate = true; 
 
@@ -538,6 +528,40 @@ export default class Viewer {
 		return dummy;
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	// transform selected vertex
 	changeVertexPosition(transformVector){
 		
@@ -550,55 +574,55 @@ export default class Viewer {
 		let genToUpdate = indexGeneration[positionIndex];
 		genToUpdate++; // on met a jour la prochaine generation
 
-		if(genToUpdate == this.#catmullClarkGenerations.length){
-			this.#transformVectorCache[positionIndex] = transformVector;
-		}
+		
 		// console.log("posId",positionIndex);
 		
 
-		if(this.#catmullClarkGenerations.length > 0 && genToUpdate < this.#catmullClarkGenerations.length){
+		if(this.#catmullClarkGenerations.length >= 0 && genToUpdate <= this.#catmullClarkGenerations.length){
 			
-			if(genToUpdate == 1 && this.#catmullClarkGenerations.length == 1){
-				genToUpdate = 0;
+			if(genToUpdate == 1) genToUpdate = 0; // gen0 cqs pqrticulier
+			if(genToUpdate == this.#catmullClarkGenerations.length){
+				console.log("straight")
+				this.#transformVectorCache[positionIndex] = transformVector;
+				position[positionIndex].add(transformVector);
+			} else {
+				this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
+				this.#catmullClarkGenerations[genToUpdate].toTransform = true;
+				while (genToUpdate < this.#catmullClarkGenerations.length) {
+					console.log("cas autre",genToUpdate)
+					this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
+					genToUpdate++;
+				}
+				this.addTransformVectorCache();
 			}
-			
-			this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
-			this.#catmullClarkGenerations[genToUpdate].toTransform = true;
-			while (genToUpdate < this.#catmullClarkGenerations.length) {
-				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
-				genToUpdate++;
-			}
-			this.updateCurrentPosition();
-
-		} else {
-			position[positionIndex].add(transformVector);
 		}
-
+		
 		
 
-		this.setMesh(this.#mesh);
+		this.setMeshRenderer(this.#mesh);
 		this.clearVertices();
 		this.showVertices();
 		
 		this.render();
 	}
 
-	updateCurrentPosition(){
+	addTransformVectorCache(){
 		if(this.#transformVectorCache){
 			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		for(const [id, vd] of Object.entries(this.#transformVectorCache)) {
-			position[id].add(vd);
-		}
+			for(const [id, vd] of Object.entries(this.#transformVectorCache)) {
+				position[id].add(vd);
+			}
 		}
 	}
 
-	addTransformVectorCache(){
-		for(const [id, transform] of Object.entries(this.#transformVectorCache)) {
-			// console.log(this.#catmullClarkGenerations[this.#catmullClarkGenerations.length-1 > 0 ? this.#catmullClarkGenerations.length-1 : 0].transforms)
-			// this.#catmullClarkGenerations[this.#catmullClarkGenerations.length-1 > 0 ? this.#catmullClarkGenerations.length-1 : 0].addTransform(id, transform);
-			// this.#catmullClarkGenerations[this.#catmullClarkGenerations.length-1 > 0 ? this.#catmullClarkGenerations.length-1 : 0].updatePosition(this.#mesh);
+	initTransformCache(){
+		if(this.#transformVectorCache){
+			for(const [id, vd] of Object.entries(this.#transformVectorCache)) {
+				vd.set(0,0,0);
+			}
 		}
 	}
+
 
 	getCatmullClarkGenerations(){
         return this.#catmullClarkGenerations ? this.#catmullClarkGenerations : [];

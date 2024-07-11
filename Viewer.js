@@ -240,7 +240,7 @@ export default class Viewer {
 				const n = this.#mesh.degree(this.#mesh.vertex, vd);
 	
 				let d0 = vd;
-				let d1 = d0;
+				let d1 = d0
 				do {
 					d0 = this.#mesh.phi2[d0];
 					d1 = this.#mesh.phi_1[d0]

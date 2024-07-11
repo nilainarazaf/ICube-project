@@ -42,24 +42,27 @@ const guiParams = {
     },
 
     // Options
-    showOriginalEdges: true,
-    faceOpacity: 1,
-    edgeOpacity: 1,
 	faceNormals: false,
-    showVertices: true,
-    showEdges: true,
+    faceOpacity: 1,
     color: 0x0099FF,
 
+    edgeOpacity: 1,
+    showEdges: true,
+    
+    showVertices: true,
+    verticesSize: 1,
+    
     // Vertex
-    positionX: 0,
-    positionY: 0,
-    positionZ: 0,
-    change: function(){
-        const vertex = new THREE.Vector3(this.positionX, this.positionY, this.positionZ);
-        viewer.changeVertexPosition(vertex);
-    },
-
+    // positionX: 0,
+    // positionY: 0,
+    // positionZ: 0,
+    // change: function(){
+    //     const vertex = new THREE.Vector3(this.positionX, this.positionY, this.positionZ);
+    //     viewer.changeVertexPosition(vertex);
+    // },
+    
     // CatmullClark
+    showOriginalEdges: false,
 	iteration: 1,
 	applyCatmullClark: function() {
         applyCatmullClark(guiParams.iteration);
@@ -83,61 +86,105 @@ file.add(guiParams, 'fileName');
 file.add(guiParams, 'saveFile').name('Save File');
 
 // Options
-const options = gui.addFolder('Options');
 
-options.add(guiParams, 'showOriginalEdges').onChange(bool => {
-    if (bool) {
-        viewer.showOriginalEdges();
-    } else {
-        viewer.clearOriginalEdges();
-    }
-});
-options.add(guiParams, 'faceNormals').onChange(bool => {
+const guiFace = gui.addFolder('Face');
+guiFace.add(guiParams, 'faceNormals').onChange(bool => {
     if (bool) {
         viewer.showFaceNormals();
     } else {
         viewer.clearFaceNormals();
     }
 });
-options.add(guiParams, 'showVertices').onChange(bool => {
+guiFace.add(guiParams, 'faceOpacity', 0, 1, 0.01).onChange(opacity => {
+    viewer.setFaceOpacity(opacity);
+});
+guiFace.addColor(guiParams, 'color').onChange(color => {
+    viewer.setFaceColor(color);
+});
+
+
+const guiEdge = gui.addFolder('Edge');
+guiEdge.add(guiParams, 'edgeOpacity', 0, 1, 0.001).onChange(opacity => {
+    viewer.setEdgeOpacity(opacity);
+});
+guiEdge.add(guiParams, 'showEdges').onChange(bool => {
+    viewer.showEdges(bool);
+});
+
+
+const guiVetex = gui.addFolder('Vertex');
+guiVetex.add(guiParams, 'showVertices').onChange(bool => {
     if (bool) {
         viewer.showVertices();
     } else {
         viewer.clearVertices();
     }
 });
-options.add(guiParams, 'faceOpacity', 0, 1, 0.01).onChange(opacity => {
-    viewer.setFaceOpacity(opacity);
-});
-options.add(guiParams, 'edgeOpacity', 0, 1, 0.001).onChange(opacity => {
-    viewer.setEdgeOpacity(opacity);
-});
-options.add(guiParams, 'showEdges').onChange(bool => {
-    viewer.showEdges(bool);
-});
-options.addColor(guiParams, 'color').onChange(color => {
-    viewer.setFaceColor(color);
+let scaleBuff = 1;
+guiVetex.add(guiParams, 'verticesSize', 1, 5, 0.05).onChange(scale => {
+    if(scale != 0) {
+        if(scaleBuff != 1) scaleBuff = 1 / scaleBuff;
+        viewer.setVerticesSize(scaleBuff);
+        viewer.setVerticesSize(scale);
+        scaleBuff = scale;
+    }
 });
 
-const guiVertex = gui.addFolder('Vertex');
-guiVertex.add(guiParams, 'positionX', -10, 10, 0.05).onChange( x =>{
-    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-        viewer.changeVertexPosition(vertex);
-});
-guiVertex.add(guiParams, 'positionY', -10, 10, 0.05).onChange( x =>{
-    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-        viewer.changeVertexPosition(vertex);
-});
-guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange( x =>{
-    const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-        viewer.changeVertexPosition(vertex);
-});
+// const guiVertex = gui.addFolder('Vertex');
+// const transformVectorBuffer = new THREE.Vector3();
+// guiVertex.add(guiParams, 'positionX', -10, 10, 0.05).onChange( x =>{
+//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+			
+//     if(!transformVectorBuffer){
+//         transformVectorBuffer = new THREE.Vector3(0,0,0);
+//     }
+
+//     const resetPos = transformVectorBuffer.clone().negate();
+//     viewer.changeVertexPosition(resetPos)
+    
+//     viewer.changeVertexPosition(vertex)
+//     transformVectorBuffer.copy(vertex)
+// });
+// guiVertex.add(guiParams, 'positionY', -10, 10, 0.05).onChange( x =>{
+//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+			
+//     if(!transformVectorBuffer){
+//         transformVectorBuffer = new THREE.Vector3(0,0,0);
+//     }
+
+//     const resetPos = transformVectorBuffer.clone().negate();
+//     viewer.changeVertexPosition(resetPos)
+    
+//     viewer.changeVertexPosition(vertex)
+//     transformVectorBuffer.copy(vertex)
+// });
+// guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange( x =>{
+//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
+			
+//     if(!transformVectorBuffer){
+//         transformVectorBuffer = new THREE.Vector3(0,0,0);
+//     }
+
+//     const resetPos = transformVectorBuffer.clone().negate();
+//     viewer.changeVertexPosition(resetPos)
+    
+//     viewer.changeVertexPosition(vertex)
+//     transformVectorBuffer.copy(vertex)
+
+// });
 
 
-guiVertex.add(guiParams, 'change').name('change');
+// guiVertex.add(guiParams, 'change').name('change');
 
 // CatmullClark
 const catmullClark = gui.addFolder('CatmullClark');
+catmullClark.add(guiParams, 'showOriginalEdges').onChange(bool => {
+    if (bool) {
+        viewer.showOriginalEdges();
+    } else {
+        viewer.clearOriginalEdges();
+    }
+});
 catmullClark.add(guiParams, 'iteration');
 catmullClark.add(guiParams, 'applyCatmullClark').name('Apply');
 catmullClark.add(guiParams, 'reset');
@@ -179,17 +226,21 @@ function saveFile() {
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
 function applyCatmullClark(iteration = 1) {
+    for (let index = 0; index < iteration; index++) {
+        let generations = viewer.getCatmullClarkGenerations();
 
-    let generations = viewer.getCatmullClarkGenerations();
-
+        if(generations.length == 0){
+            viewer.setInitalMesh()
+        }
+        
+        const gen = CatmullClark(dataHandler.mesh, generations);
+        
+        viewer.setCatmullClarkGenerations(gen);
+        
+        viewer.setMesh(dataHandler.mesh);
+    }
     
-    const gen = CatmullClark(dataHandler.mesh, generations);
-    console.log(gen)
-    
-    viewer.setCatmullClarkGenerations(gen);
-    
-    viewer.setMesh(dataHandler.mesh);
-
+    viewer.clearScene();
     reset();
     render();
 };
@@ -241,6 +292,7 @@ function reset(){
     viewer.setEdgeOpacity(guiParams.edgeOpacity);
     viewer.showEdges(guiParams.showEdges);
     viewer.setFaceColor(guiParams.color);
+    viewer.setVerticesSize(guiParams.verticesSize);
     
     // viewer.clearVertexNormals();
 }

@@ -364,6 +364,7 @@ class GenCatmullClark {
 
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex] = transformVector;
+		console.log("poid",positionIndex)
 	}
 
 
@@ -374,6 +375,7 @@ class GenCatmullClark {
 		for(const [id, transformVector] of Object.entries(this.transforms)) {
 					
 			if(this.toTransform){
+				console.log("id",id)
 				this.initialPosition[id].add(transformVector);
 				currentPosition[id].copy(this.initialPosition[id]);
 			} else {

@@ -250,7 +250,7 @@ function reset(){
     viewer.showEdges(guiParams.showEdges);
     viewer.setFaceColor(guiParams.color);
     
-    // viewer.clearVertexNormals();
+    // viewer.clearVertexNormals()
 }
 
 

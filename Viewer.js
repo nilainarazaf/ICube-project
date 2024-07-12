@@ -534,6 +534,6 @@ export default class Viewer {
 
 	genCatmullClark(gen){
         this.catmullClarkGenerations.push(gen);
-		// console.log(this.catmullClarkGenerations);
+		// console.log(this.catmullClarkGenerations)
 	}
 }

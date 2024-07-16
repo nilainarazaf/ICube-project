@@ -3,15 +3,20 @@ import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
 
 export default function catmullClark(cmap, generations = []){
 	const genIndex = generations.length;
+	let gen = null;
 
-	
-	let gen = new GenCatmullClark(cmap, genIndex);
-	generations.push(gen);
+	if(genIndex == 0){
+		gen = new GenCatmullClark(cmap, genIndex);
+		generations.push(gen);
+	} else {
+		console.log(genIndex)
+		generations[genIndex-1].buildNextGeneration(cmap);
 
-	// if(genIndex == 0){
-	// 	gen = new GenCatmullClark(cmap, genIndex+1);
-	// 	generations.push(gen);
-	// }
+		gen = new GenCatmullClark(cmap, genIndex);
+		generations.push(gen);
+	}
+
+	console.log(generations)
 	return generations;
 
 }
@@ -119,6 +124,12 @@ export function catmullClark_inter(cmap){
 
 
 
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 class GenCatmullClark {
 
@@ -142,52 +153,47 @@ class GenCatmullClark {
 		let indexGeneration = [];
 		
 		if(generation == 0){
-			const indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
-			
-			cmap.foreach(cmap.vertex, vd => {
-				indexGeneration[cmap.cell(cmap.vertex, vd)] = 0;
-			});
-
-			const position = cmap.getAttribute(cmap.vertex, "position");
-			
-			this.initialPosition = []
-
-			position.forEach(pos => {
-				this.initialPosition.push(pos.clone());
-			} )
-			
-			this.vertices = {...cmap.cache(cmap.vertex)};
-			
-		} else {
-			indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
-			
-			
-			const position = cmap.getAttribute(cmap.vertex, "position");
-			this.initialPosition = []
-
-			position.forEach( pos=> {
-				this.initialPosition.push(pos.clone());
-			})
-
-			this.buildTopology(cmap);
-			
-			this.buildGeometry(cmap);
-			
-			cmap.foreach(cmap.vertex, vd => {
-				if(!(Object.values(this.initialVertices).includes(vd))){
-					indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
-				}
-			});
-
+			indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
 		}
 
-		this.transforms = {}
-		for(const [vd, pos] of Object.entries(this.initialPosition)) {
-			this.transforms[vd] = {'value':new Vector3(), 'needAdd':false}
-		};
+		cmap.foreach(cmap.vertex, vd => {
+			indexGeneration[cmap.cell(cmap.vertex, vd)] = 0;
+		});
 		
+		const position = cmap.getAttribute(cmap.vertex, "position");
+		
+		this.initialPosition = []
+		this.transforms = []
+		
+		position.forEach( (pos, id) => {
+			this.initialPosition.push(pos.clone());
+			
+			this.transforms[id] = new Vector3(0,0,0)
+		} )
 
+		
+		this.vertices = {...cmap.cache(cmap.vertex)};
+		
+		cmap.foreach(cmap.vertex, vd => {
+			if(!(Object.values(this.initialVertices).includes(vd))){
+				indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
+			}
+		});
 	}
+
+	buildNextGeneration(cmap){
+		this.buildTopology(cmap);
+			
+		this.buildGeometry(cmap);
+		
+		const indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
+		cmap.foreach(cmap.vertex, vd => {
+			if(!(Object.values(this.initialVertices).includes(vd))){
+				indexGeneration[cmap.cell(cmap.vertex, vd)] = this.generationId + 1;
+			}
+		});
+	}
+
 
     buildTopology(cmap){
 		const vertex = cmap.vertex;
@@ -333,8 +339,6 @@ class GenCatmullClark {
 
 	buildGeometry(cmap){
 		const vertex = cmap.vertex;
-		const edge = cmap.edge;
-		const face = cmap.face;
 
 		const position = cmap.getAttribute(vertex, "position");
 
@@ -361,8 +365,7 @@ class GenCatmullClark {
 	}
 
 	addTransform(positionIndex, transformVector){
-		this.transforms[positionIndex].value = transformVector;
-		this.transforms[positionIndex].needAdd = true;
+		this.transforms[positionIndex] = transformVector;
 	}
 
 
@@ -372,23 +375,16 @@ class GenCatmullClark {
 
 		for(const [id, transform] of Object.entries(this.transforms)) {
 					
-			if(this.toTransform){
-				if(transform.needAdd){
-					this.initialPosition[id].add(transform.value);
-					transform.needAdd = false;
-				}
-				currentPosition[id].copy(this.initialPosition[id]);
-			} else {
-				currentPosition[id].add(transform.value);
-			}
-			
+			currentPosition[id].copy(this.initialPosition[id]);
+			currentPosition[id].add(transform);
+		
 		}
 
-		if(this.generationId != 0) {
+		if(this.weights) {
 			this.buildGeometry(cmap);
+			console.log(currentPosition)
 		}
 
-		this.toTransform = false;
 	}
 
 

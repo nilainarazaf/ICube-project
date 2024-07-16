@@ -126,7 +126,7 @@ guiVetex.add(guiParams, 'showVertices').onChange(bool => {
     }
 });
 let scaleBuff = 1;
-guiVetex.add(guiParams, 'verticesSize', 1, 5, 0.05).onChange(scale => {
+guiVetex.add(guiParams, 'verticesSize', 0.1, 5, 0.05).onChange(scale => {
     if(scale != 0) {
         if(scaleBuff != 1) scaleBuff = 1 / scaleBuff;
         viewer.setVerticesSize(scaleBuff);

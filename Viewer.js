@@ -513,6 +513,7 @@ export default class Viewer {
 		this.render();
 	}
 
+	changeCounter = 0;
 	// Fonction pour sélectionner et manipuler une instance spécifique
 	selectInstance(instanceId) {
 		const instancedMesh = this.#selected.mesh;
@@ -527,48 +528,44 @@ export default class Viewer {
 		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 		
 		if(this.#transformVectorBuffer) this.#transformVectorBuffer = null;
-		this.#transformControls.attach(dummy);
 		
+		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
+		let gen = indexGeneration[indexPos];
+		// console.log("gen /",gen)
+		
+		const pos0 = this.#catmullClarkGenerations[gen].initialPosition[indexPos].clone()
+		this.#transformControls.attach(dummy);
+
 		this.#transformControls.addEventListener('change', () => {
 			
-			let position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 			
-			if(!this.#transformVectorBuffer){
-				console.log(this.#selected.dummy.matrix)
-				this.#transformVectorBuffer = new THREE.Vector3(0,0,0);
-				
-				instancedMesh.getMatrixAt(instanceId, this.#selected.dummy.matrix);
-				this.#selected.dummy.updateMatrix();
 
-				instancedMesh.setMatrixAt(instanceId, this.#selected.dummy.matrix);
-				instancedMesh.instanceMatrix.needsUpdate = true;
-			} else {
-				console.log("reset here !!")
-				
-				const resetPos = this.#transformVectorBuffer.clone().negate();
-				this.changeVertexPosition(resetPos)
-				this.#transformVectorBuffer.set(0,0,0)
-				this.#selected.dummy.updateMatrix();
-
-				instancedMesh.setMatrixAt(instanceId, this.#selected.dummy.matrix);
-				instancedMesh.instanceMatrix.needsUpdate = true;
-
-				
-				const pos = this.#selected.dummy.position
-				this.#transformVectorBuffer.set(pos.x, pos.y, pos.z);
-
-				this.#transformVectorBuffer.sub(position[indexPos]);
-				this.changeVertexPosition(this.#transformVectorBuffer)
-			}
-		
+			
+			const pos = this.#selected.dummy.position.clone();
+			pos.sub(pos0);
+			
+			this.changeVertexPosition(pos.clone());
 			
 		});
+
+		// this.#transformControls.addEventListener('change', () => {
+			
+		// 	// console.log(`change ${this.changeCounter++}`)
+		// 	console.log(this.#transformVectorBuffer)
+		
+			
+		// });
 		this.#transformControls.addEventListener('mouseDown', () => {
 			this.#orbitControls.enableRotate = false;
+			this.#transformControls.addEventListener('mouseUp', () => {
+				this.#orbitControls.enableRotate = true;
+				this.#transformControls.removeEventListener('mouseUp')
+			})
+			this.#transformControls.removeEventListener('mouseDown')
 		})
-		this.#transformControls.addEventListener('mouseUp', () => {
-			this.#orbitControls.enableRotate = true;
-		})
+		// this.#transformControls.addEventListener('mouseUp', () => {
+		// 	this.#orbitControls.enableRotate = true;
+		// })
 	}
 
 
@@ -607,45 +604,44 @@ export default class Viewer {
 
 	// transform selected vertex
 	changeVertexPosition(transformVector){
-		
+
 		const positionIndex = this.#vertices.verticesIndexPosition[this.#selected.id];
 		
-		const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+		// const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 		
 		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
-
 		let genToUpdate = indexGeneration[positionIndex];
-		genToUpdate++; // on met a jour la prochaine generation
-
 		
-		// console.log("posId",positionIndex);
-		
-
 		if(this.#catmullClarkGenerations.length >= 0 && genToUpdate <= this.#catmullClarkGenerations.length){
 			
-			if(genToUpdate == 1) genToUpdate = 0; // gen0 cqs pqrticulier
-			if(this.#selected.mesh.finalVertices){
-				this.#transformVectorCache[positionIndex] = transformVector;
-				position[positionIndex].add(transformVector);
-			} else {
-				this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
-				this.#catmullClarkGenerations[genToUpdate].toTransform = true;
-				while (genToUpdate < this.#catmullClarkGenerations.length) {
-					this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
-					genToUpdate++;
-				}
-				this.addTransformVectorCache();
-			}
-		}
-		
-		
+			this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
+			console.log("okie")
 
+			this.#catmullClarkGenerations[genToUpdate].toTransform = true
+
+			while (genToUpdate < this.#catmullClarkGenerations.length) {
+				console.log(genToUpdate)
+				// console.log(this.#catmullClarkGenerations, genToUpdate)
+				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
+				genToUpdate++;
+
+				let position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
+			
+				console.log(position)
+			
+				throw new Error()
+			}
+			
+		}
+	
 		this.setMeshRenderer(this.#mesh);
 		this.clearVertices();
 		this.showVertices();
 		
 		this.render();
-	}
+		}
+	
+	
 
 	addTransformVectorCache(){
 		if(this.#transformVectorCache){

@@ -179,6 +179,9 @@ class GenCatmullClark {
 				indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
 			}
 		});
+
+		
+
 	}
 
 	buildNextGeneration(cmap){
@@ -192,6 +195,7 @@ class GenCatmullClark {
 				indexGeneration[cmap.cell(cmap.vertex, vd)] = this.generationId + 1;
 			}
 		});
+
 	}
 
 
@@ -361,7 +365,6 @@ class GenCatmullClark {
 			position[vid].copy(nextGenPosition[vid]);
 		});
 
-		this.currentPosition = {...nextGenPosition};
 	}
 
 	addTransform(positionIndex, transformVector){
@@ -369,26 +372,41 @@ class GenCatmullClark {
 	}
 
 
-	updatePosition(cmap){
+	updatePosition(cmap, current = false){
 
 		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
 
 		for(const [id, transform] of Object.entries(this.transforms)) {
-					
-			currentPosition[id].copy(this.initialPosition[id]);
-			currentPosition[id].add(transform);
-		
+				
+			if(this.toTransform) {
+				currentPosition[id].copy(this.initialPosition[id]);
+				currentPosition[id].add(transform);
+			}
 		}
 
 		if(this.weights) {
 			this.buildGeometry(cmap);
-			console.log(currentPosition)
 		}
 
+		this.toTransform = false;
+
 	}
 
-
-	initTransform(){
+	updateInitialPosition(cmap){
+		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
+		this.initialPosition.forEach( (pos, id) => {
+			pos.copy(currentPosition[id]);
+			currentPosition[id].add(this.transforms[id].clone());
+		} )
 	}
 
+	currentPosition(){
+		const currentPosition = []
+		this.initialPosition.forEach( (pos, id) => {
+			const sum = pos.clone();
+			sum.add(this.transforms[id].clone());
+			currentPosition.push(sum);
+		} )
+		return currentPosition;
+	}
 }

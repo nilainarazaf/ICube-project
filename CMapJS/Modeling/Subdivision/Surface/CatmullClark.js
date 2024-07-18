@@ -7,16 +7,20 @@ export default function catmullClark(cmap, generations = []){
 
 	if(genIndex == 0){
 		gen = new GenCatmullClark(cmap, genIndex);
+		gen.buildNextGeneration(cmap);
+		generations.push(gen);
+
+		gen = new GenCatmullClark(cmap, genIndex+1);
 		generations.push(gen);
 	} else {
-		console.log(genIndex)
+		// console.log(genIndex)
 		generations[genIndex-1].buildNextGeneration(cmap);
 
 		gen = new GenCatmullClark(cmap, genIndex);
 		generations.push(gen);
 	}
 
-	console.log(generations)
+	// console.log(generations);
 	return generations;
 
 }

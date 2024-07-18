@@ -40,7 +40,107 @@ let RendererCellProto = {
 	update_pos: function(){
 		this.mesh.geometry.verticesNeedUpdate = true;
 		return this;
-	}
+	},
+
+
+	setVertexColor : function (color) {
+		if(verticesMesh) {
+			vertexColor.setHex(color);
+			verticesMesh.material.color.setHex(color);
+			verticesMesh.material.needsUpdate = true;
+		}
+	},
+
+	setEdgeColor : function (color) {
+		if(edgesMesh) {
+			edgeColor.setHex(color);
+			edgesMesh.material.color.setHex(color);
+			edgesMesh.material.needsUpdate = true;
+		}
+	},
+
+	setFaceColor : function (color) {
+		if(facesMesh) {
+			faceColor.setHex(color);
+			facesMesh.material.color.setHex(color);
+			facesMesh.material.needsUpdate = true;
+		}
+	},
+
+	resizeVertices : function(size) {
+		vertexSize = size;
+		renderer.vertices.resize(size);
+		this.updateVertices();
+	},
+
+	resizeEdges : function(size) {
+		edgeSize = size;
+		renderer.edges.resize(size);
+		this.updateEdges();
+	},
+
+	updateVertices : function() {
+		const visible = verticesMesh.visible
+		renderer.vertices.update();
+		verticesMesh = renderer.vertices.mesh;
+		verticesMesh.visible = visible
+	},
+
+	updateEdges : function() {
+		const visible = edgesMesh.visible;
+		renderer.edges.update();
+		edgesMesh = renderer.edges.mesh;
+		edgesMesh.visible = visible;
+	},
+
+	updateFaces : function() {
+		const visible = facesMesh.visible;
+		renderer.faces.update();
+		facesMesh = renderer.faces.mesh;
+		facesMesh.visible = visible;
+	},
+
+	updateMeshes : function () {
+		if(verticesMesh) {
+			this.updateVertices();
+		}
+		if(edgesMesh) {
+			this.updateEdges();
+		}
+		if(facesMesh) {
+			this.updateFaces();
+		}
+	},
+
+	vertexVisibility : function (visible) {
+		if(verticesMesh)
+			verticesMesh.visible = visible
+		else if(visible) {
+			renderer.vertices.create({size: vertexSize, color: vertexColor}); 
+			verticesMesh = renderer.vertices.mesh;
+			renderer.vertices.addTo(parentObject);
+		}
+	},
+
+	edgeVisibility : function (visible) {
+		if(edgesMesh)
+			edgesMesh.visible = visible
+		else if(visible) {
+			renderer.edges.create({size: edgeSize, color: edgeColor}); 
+			edgesMesh = renderer.edges.mesh;
+			renderer.edges.addTo(parentObject);
+		}
+	},
+
+	faceVisibility : function (visible) {
+		if(facesMesh)
+			facesMesh.visible = visible
+		else if(visible) {
+			renderer.faces.create({color: faceColor}); 
+			facesMesh = renderer.faces.mesh;
+			renderer.faces.addTo(parentObject);
+		}
+	},
 }
 
 

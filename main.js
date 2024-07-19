@@ -41,18 +41,27 @@ const guiParams = {
         saveFile();
     },
 
-    // Options
-	faceNormals: false,
+    // Settings
+    // Faces
+    showFaces: true,
     faceOpacity: 1,
-    color: 0x0099FF,
+    faceColor: 0x0099FF,
+    
+	faceNormals: false,
 
-    edgeOpacity: 1,
+    // Edges
     showEdges: true,
-    
+    edgeOpacity: 1,
+    edgeSize: 1,
+    edgeColor: 0x010101,
+
+    // Vertices
     showVertices: true,
-    vertexNormals: false,
-    verticesSize: 1,
+    verticesOpacity: 1,
+    verticesSize: 0.00625,
+    verticesColor: 0xff0000,
     
+    verticesNormals: false,
     
     // CatmullClark
     generationCount: 0,
@@ -88,90 +97,60 @@ const file = gui.addFolder('File');
 
 const guiFace = gui.addFolder('Face');
     guiFace.close();
-    guiFace.add(guiParams, 'faceNormals').onChange(bool => {
-            viewer.showFaceNormals(bool);
+    guiFace.add(guiParams, 'showFaces').onChange(bool => {
+        viewer.showFaces(bool);
     });
-    guiFace.add(guiParams, 'faceOpacity', 0, 1, 0.01).onChange(opacity => {
+    
+    guiFace.add(guiParams, 'faceOpacity', 0.01, 1, 0.01).onChange(opacity => {
         viewer.setFaceOpacity(opacity);
     });
-    guiFace.addColor(guiParams, 'color').onChange(color => {
+    guiFace.addColor(guiParams, 'faceColor').onChange(color => {
         viewer.setFaceColor(color);
+    });
+
+    guiFace.add(guiParams, 'faceNormals').onChange(bool => {
+            viewer.showFaceNormals(bool);
     });
 
 
 const guiEdge = gui.addFolder('Edge');
     guiEdge.close();
-    guiEdge.add(guiParams, 'edgeOpacity', 0, 1, 0.001).onChange(opacity => {
-        viewer.setEdgeOpacity(opacity);
-    });
     guiEdge.add(guiParams, 'showEdges').onChange(bool => {
         viewer.showEdges(bool);
     });
 
-
-const guiVetex = gui.addFolder('Vertex');
-    guiVetex.close();
-    guiVetex.add(guiParams, 'showVertices').onChange(bool => {
-            viewer.showVertices(bool);
+    guiEdge.add(guiParams, 'edgeOpacity', 0.01, 1, 0.01).onChange(opacity => {
+        viewer.setEdgeOpacity(opacity);
     });
-    guiVetex.add(guiParams, 'vertexNormals').onChange(bool => {
+    guiEdge.add(guiParams, 'edgeSize', 0.001, 5, 0.001).onChange(size => {
+        viewer.setEdgeSize(size);
+    });
+    guiEdge.addColor(guiParams, 'edgeColor').onChange(color => {
+        viewer.setEdgeColor(color);
+    });
+
+
+const guiVertex = gui.addFolder('Vertex');
+    guiVertex.close();
+    guiVertex.add(guiParams, 'showVertices').onChange(bool => {
+        viewer.showVertices(bool);
+    });
+    
+    guiVertex.add(guiParams, 'verticesOpacity', 0.01, 1, 0.01).onChange(opacity => {
+        viewer.setVerticesOpacity(opacity);
+    });
+    guiVertex.add(guiParams, 'verticesSize', 0.001, 0.2, 0.00001).onChange(size => {
+        viewer.setVerticesSize(size);
+    });
+    guiVertex.addColor(guiParams, 'verticesColor').onChange(color => {
+        viewer.setVerticesColor(color);
+    });
+    
+    guiVertex.add(guiParams, 'verticesNormals').onChange(bool => {
         viewer.showVertexNormals(bool);
     });
-    let scaleBuff = 1;
-    guiVetex.add(guiParams, 'verticesSize', 0.5, 2, 0.05).onChange(scale => {
-        if(scale != 0) {
-            if(scaleBuff != 1) scaleBuff = 1 / scaleBuff;
-            viewer.setVerticesSize(scaleBuff);
-            viewer.setVerticesSize(scale);
-            scaleBuff = scale;
-        }
-    });
-
-// const guiVertex = gui.addFolder('Vertex');
-// const transformVectorBuffer = new THREE.Vector3();
-// guiVertex.add(guiParams, 'positionX', -10, 10, 0.05).onChange( x =>{
-//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-			
-//     if(!transformVectorBuffer){
-//         transformVectorBuffer = new THREE.Vector3(0,0,0);
-//     }
-
-//     const resetPos = transformVectorBuffer.clone().negate();
-//     viewer.changeVertexPosition(resetPos)
-    
-//     viewer.changeVertexPosition(vertex)
-//     transformVectorBuffer.copy(vertex)
-// });
-// guiVertex.add(guiParams, 'positionY', -10, 10, 0.05).onChange( x =>{
-//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-			
-//     if(!transformVectorBuffer){
-//         transformVectorBuffer = new THREE.Vector3(0,0,0);
-//     }
-
-//     const resetPos = transformVectorBuffer.clone().negate();
-//     viewer.changeVertexPosition(resetPos)
-    
-//     viewer.changeVertexPosition(vertex)
-//     transformVectorBuffer.copy(vertex)
-// });
-// guiVertex.add(guiParams, 'positionZ', -10, 10, 0.05).onChange( x =>{
-//     const vertex = new THREE.Vector3(guiParams.positionX, guiParams.positionY, guiParams.positionZ);
-			
-//     if(!transformVectorBuffer){
-//         transformVectorBuffer = new THREE.Vector3(0,0,0);
-//     }
-
-//     const resetPos = transformVectorBuffer.clone().negate();
-//     viewer.changeVertexPosition(resetPos)
-    
-//     viewer.changeVertexPosition(vertex)
-//     transformVectorBuffer.copy(vertex)
-
-// });
 
 
-// guiVertex.add(guiParams, 'change').name('change');
 
 // CatmullClark
 const catmullClark = gui.addFolder('CatmullClark');
@@ -238,7 +217,6 @@ function applyCatmullClark() {
     
     viewer.clearScene();
     guiParams.generationCount = gen.length-1;
-    update();
     render();
 };
 
@@ -253,7 +231,6 @@ function showNormal(normal) {
 // Update function
 function update() {
     // This function can be used to update the scene
-    reset();
 }
 
 ///////////////////////////////////////////////
@@ -267,24 +244,6 @@ function render() {
 function mainloop() {
     render();
     requestAnimationFrame(mainloop);
-}
-
-///////////////////////////////////////////////
-// Reset options renderer (when apply catmullclark)
-function reset(){
-    // face
-    viewer.showFaceNormals(guiParams.faceNormals);
-    viewer.setFaceOpacity(guiParams.faceOpacity);
-    viewer.setFaceColor(guiParams.color);
-    
-    // Edge
-    viewer.setEdgeOpacity(guiParams.edgeOpacity);
-    viewer.showEdges(guiParams.showEdges);
-    
-    // Vertices
-    viewer.showVertices(guiParams.showVertices);
-    viewer.setVerticesSize(guiParams.verticesSize);
-    
 }
 
 

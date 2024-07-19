@@ -37,110 +37,22 @@ let RendererCellProto = {
 		return this;
 	},
 
-	update_pos: function(){
+	updatePos: function(){
 		this.mesh.geometry.verticesNeedUpdate = true;
 		return this;
 	},
 
 
-	setVertexColor : function (color) {
-		if(verticesMesh) {
-			vertexColor.setHex(color);
-			verticesMesh.material.color.setHex(color);
-			verticesMesh.material.needsUpdate = true;
-		}
+	setColor : function (color) {
+		this.params.color = color;
+	},
+	
+	setOpacity : function(opacity){
+		this.params.transparent = true;
+		this.params.opacity = opacity;
+		
 	},
 
-	setEdgeColor : function (color) {
-		if(edgesMesh) {
-			edgeColor.setHex(color);
-			edgesMesh.material.color.setHex(color);
-			edgesMesh.material.needsUpdate = true;
-		}
-	},
-
-	setFaceColor : function (color) {
-		if(facesMesh) {
-			faceColor.setHex(color);
-			facesMesh.material.color.setHex(color);
-			facesMesh.material.needsUpdate = true;
-		}
-	},
-
-	resizeVertices : function(size) {
-		vertexSize = size;
-		renderer.vertices.resize(size);
-		this.updateVertices();
-	},
-
-	resizeEdges : function(size) {
-		edgeSize = size;
-		renderer.edges.resize(size);
-		this.updateEdges();
-	},
-
-	updateVertices : function() {
-		const visible = verticesMesh.visible
-		renderer.vertices.update();
-		verticesMesh = renderer.vertices.mesh;
-		verticesMesh.visible = visible
-	},
-
-	updateEdges : function() {
-		const visible = edgesMesh.visible;
-		renderer.edges.update();
-		edgesMesh = renderer.edges.mesh;
-		edgesMesh.visible = visible;
-	},
-
-	updateFaces : function() {
-		const visible = facesMesh.visible;
-		renderer.faces.update();
-		facesMesh = renderer.faces.mesh;
-		facesMesh.visible = visible;
-	},
-
-	updateMeshes : function () {
-		if(verticesMesh) {
-			this.updateVertices();
-		}
-		if(edgesMesh) {
-			this.updateEdges();
-		}
-		if(facesMesh) {
-			this.updateFaces();
-		}
-	},
-
-	vertexVisibility : function (visible) {
-		if(verticesMesh)
-			verticesMesh.visible = visible
-		else if(visible) {
-			renderer.vertices.create({size: vertexSize, color: vertexColor}); 
-			verticesMesh = renderer.vertices.mesh;
-			renderer.vertices.addTo(parentObject);
-		}
-	},
-
-	edgeVisibility : function (visible) {
-		if(edgesMesh)
-			edgesMesh.visible = visible
-		else if(visible) {
-			renderer.edges.create({size: edgeSize, color: edgeColor}); 
-			edgesMesh = renderer.edges.mesh;
-			renderer.edges.addTo(parentObject);
-		}
-	},
-
-	faceVisibility : function (visible) {
-		if(facesMesh)
-			facesMesh.visible = visible
-		else if(visible) {
-			renderer.faces.create({color: faceColor}); 
-			facesMesh = renderer.faces.mesh;
-			renderer.faces.addTo(parentObject);
-		}
-	},
 }
 
 
@@ -156,7 +68,12 @@ function Renderer(cmap){
 				
 				const geometry = new THREE.SphereGeometry(1, 32, 32);	
 				
-				const material = params.material || new THREE.MeshLambertMaterial({});
+				const material = params.material || new THREE.MeshLambertMaterial({
+					color:params.color || 0xBBBBBB,
+					side: params.side || THREE.FrontSide,
+					transparent: params.transparent || false,
+					opacity: params.opacity || 1
+				});
 
 				/// to handle none contiguous embeddings
 				let maxId = -1;
@@ -215,7 +132,10 @@ function Renderer(cmap){
 
 				const geometry = new THREE.CylinderGeometry(0.0025, 0.0025, 1, 8);
 				const material = params.material || new THREE.MeshLambertMaterial({
-					// color: params.color || 0x000000,
+					color:params.color || 0xBBBBBB,
+					side: params.side || THREE.FrontSide,
+					transparent: params.transparent || false,
+					opacity: params.opacity || 1
 				});
 
 				this.mesh = new THREE.InstancedMesh(geometry, material, cmap.nbCells(edge));
@@ -462,3 +382,65 @@ function Renderer(cmap){
 
 export default Renderer;
 export {RendererCellProto};
+
+
+
+
+export function GenRenderer(genCatmullClark){
+	const position = genCatmullClark.currentPosition();
+
+	const vertices = (position == undefined) ? undefined :
+		Object.assign(Object.create(RendererCellProto), {
+			create: function(params = {}){
+				this.params = params;
+				const geometry = new THREE.SphereGeometry(0.01, 32, 32);
+				const material = params.material || new THREE.MeshLambertMaterial({
+					color:params.color || 0xBBBBBB,
+					side: params.side || THREE.FrontSide,
+					transparent: params.transparent || false,
+					opacity: params.opacity || 1
+				});
+		
+				const count = position.length;
+				const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+			
+		
+				const matrix = new THREE.Matrix4();
+		
+				const verticesIndex = [];
+				const color = new THREE.Color(0xff0000);
+				if(params.color == undefined){
+					color.setRGB(Math.random(), Math.random(), Math.random());
+				} 
+				params.color = color.clone();
+				
+				const size = params.size || 2.5;
+				position.forEach( (pos, id) => {
+		
+					matrix.makeTranslation(pos.x, pos.y, pos.z);
+					
+					const scaleMatrix = new THREE.Matrix4().makeScale(size, size, size);
+					matrix.multiply(scaleMatrix);
+					instancedMesh.setMatrixAt(id, matrix);
+					
+					
+					instancedMesh.setColorAt(id, color);
+		
+					verticesIndex.push(id);
+				});
+		
+				instancedMesh.verticesIndexPosition = verticesIndex;
+				instancedMesh.instanceColor.needsUpdate = true;
+
+				this.mesh = instancedMesh;
+			},
+
+
+			resize: function(size) {
+				this.params.size = size;
+			}
+		});
+
+		console.log(vertices)
+	return vertices;
+}

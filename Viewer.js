@@ -1,6 +1,7 @@
 // Import necessary modules
 import * as THREE from './CMapJS/Libs/three.module.js';
 import Renderer from './CMapJS/Rendering/Renderer.js';
+import {GenRenderer} from './CMapJS/Rendering/Renderer.js';
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
 import { TransformControls } from './CMapJS/Libs/TransformControls.js';
 // import { MeshHandler } from './MeshHandler.js';
@@ -100,19 +101,20 @@ export default class Viewer {
 	initializeMeshRenderer(mesh) {
 		this.#mesh = mesh;
 		this.#meshRenderer = new Renderer(mesh);
-		// this.#meshRenderer = new MeshHandler(mesh);
+
 		this.#meshRenderer.edges.create();
 		this.#meshRenderer.edges.addTo(this.#scene);
 		this.#meshRenderer.faces.create();
 		this.#meshRenderer.faces.addTo(this.#scene);
-		
+		this.#meshRenderer.vertices.create();
+		this.#meshRenderer.vertices.addTo(this.#scene);
 	}
 	
 	// Update the renderer
 	updateMeshRenderer() {
 		this.#meshRenderer.edges.update();
 		this.#meshRenderer.faces.update();
-		// this.#meshRenderer.edges.update_pos();
+		this.#meshRenderer.vertices.update();
 		this.updateVertices();
 	}
 
@@ -122,6 +124,35 @@ export default class Viewer {
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// FACES
+
+	showFaces(bool){
+		if(bool){
+			if (!this.#meshRenderer.faces.mesh) {
+				this.#meshRenderer.faces.create();
+			}
+			this.#meshRenderer.faces.addTo(this.#scene);
+		} else {
+			this.#meshRenderer.faces.remove();
+		}
+	}
+
+	// Set the opacity of the mesh faces
+	setFaceOpacity(opacity) {
+		if (this.#meshRenderer.faces.mesh) {
+			this.#meshRenderer.faces.setOpacity(opacity);
+			this.#meshRenderer.faces.update();
+		}
+		this.render();
+	}
+
+	// Set the color of the mesh faces
+	setFaceColor(color) {
+		if (this.#meshRenderer.faces.mesh) {
+			this.#meshRenderer.faces.setColor(new THREE.Color(color));
+			this.#meshRenderer.faces.update();
+		}
+		this.render();
+	}
 
 	// Show face normals
 	showFaceNormals(display) {
@@ -171,51 +202,50 @@ export default class Viewer {
 		this.render();
 	}
 
-	// Set the opacity of the mesh faces
-	setFaceOpacity(opacity) {
-		if (this.#meshRenderer.faces.mesh) {
-			this.#meshRenderer.faces.mesh.material.transparent = true;
-			this.#meshRenderer.faces.mesh.material.opacity = opacity;
-			this.#meshRenderer.faces.mesh.geometry.needUpdate = true;
-		}
-		this.render();
-	}
-
-	// Set the color of the mesh faces
-	setFaceColor(color) {
-		if (this.#meshRenderer.faces.mesh) {
-			let newColor = new THREE.Color(color);
-			this.#meshRenderer.faces.mesh.geometry.faces.forEach(face => {
-				face.color.set(newColor);
-			});
-			this.#meshRenderer.faces.mesh.geometry.colorsNeedUpdate = true;
-		}
-		this.render();
-	}
-
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// EDGE
 
+	showEdges(bool){
+		if(bool){
+			if (!this.#meshRenderer.edges.mesh) {
+				this.#meshRenderer.edges.create();
+			}
+			this.#meshRenderer.edges.addTo(this.#scene);
+		} else {
+			this.#meshRenderer.edges.remove();
+		}
+	}
+
 	// Set the opacity of the mesh edges
 	setEdgeOpacity(opacity) {
-		if (this.#meshRenderer.edges.mesh) {
-			this.#meshRenderer.edges.mesh.material.transparent = true;
-			this.#meshRenderer.edges.mesh.material.opacity = opacity;
-			// this.#meshRenderer.edges.mesh.geometry.needUpdate = true;
+		if(this.#meshRenderer.edges) {
+			this.#meshRenderer.edges.setOpacity(opacity);
+			this.#meshRenderer.edges.update();
+			console.log(this.#meshRenderer.edges)
 		}
 		this.render();
 	}
 
-	showEdges(display){
-		if(display){
-			this.#meshRenderer.edges.mesh.scale.set(1, 1, 1);
-			this.#meshRenderer.edges.mesh.geometry.needUpdate = true;
-		} else {
-			this.#meshRenderer.edges.mesh.scale.set(0, 0, 0);
-			this.#meshRenderer.edges.mesh.geometry.needUpdate = true;
+	// Set the opacity of the mesh edges
+	setEdgeSize(size) {
+		if(this.#meshRenderer.edges) {
+			this.#meshRenderer.edges.resize(size);
+			this.#meshRenderer.edges.update();
 		}
+		this.render();
 	}
+
+	// Set the color of the mesh edges
+	setEdgeColor(color) {
+		if(this.#meshRenderer.edges) {
+			this.#meshRenderer.edges.setColor(new THREE.Color(color));
+			this.#meshRenderer.edges.update();
+		}
+		this.render();
+	}
+
+	
 
 	
 
@@ -239,15 +269,15 @@ export default class Viewer {
 	// VERTEX
 
 	// Show all vetices of the current mesh
-	showVertices(display){
-		if(this.#vertices){
-			this.#scene.remove(this.#vertices);
+	showVertices(bool){
+		if(bool){
+			if (!this.#meshRenderer.vertices.mesh) {
+				this.#meshRenderer.vertices.create();
+			}
+			this.#meshRenderer.vertices.addTo(this.#scene);
+		} else {
+			this.#meshRenderer.vertices.remove();
 		}
-		if(display){
-			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-			this.#vertices = this.showVerticesAtPosition(position);
-		}
-		this.render();
 	}
 
 	// Show vertices normals
@@ -297,79 +327,75 @@ export default class Viewer {
 		this.render();
 	}
 
-	// Set vertices size
-	setVerticesSize(scaleFactor){
-		if (this.#vertices) {
-			this.#vertexMeshScale = scaleFactor
-			const instancedMesh = this.#vertices;		
-			// console.log(instancedMesh)
-
-			instancedMesh.scale.set(scaleFactor, scaleFactor, scaleFactor)
-
-
-			// const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-	
-			// position.forEach( (pos, id) => {
-	
-			// 	const matrix = new THREE.Matrix4();
-			// 	instancedMesh.getMatrixAt(id, matrix);
-				
-			// 	const scaleMatrix = new THREE.Matrix4().makeScale(scaleFactor, scaleFactor, scaleFactor);
-			// 	matrix.multiply(scaleMatrix);
-				
-			// 	instancedMesh.setMatrixAt(id, matrix);
-
-			// });
-			instancedMesh.instanceMatrix.needsUpdate = true
-
+	setVerticesOpacity(opacity){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.setOpacity(opacity);
+			this.#meshRenderer.vertices.update();
 		}
 		this.render();
-
-
-		
 	}
 
-	// Show vertices as dots
-	showVerticesAtPosition(position, randomColor = false, color = new THREE.Color(0x0000ff)) {
-		if (this.#mesh) {
-			const geometry = new THREE.SphereGeometry(0.01, 32, 32);
-			const material = new THREE.MeshStandardMaterial();
-	
-			const count = position.length;
-			const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-		
-	
-			const matrix = new THREE.Matrix4();
-	
-			const verticesIndex = [];
-			if(randomColor){
-				color.setRGB(Math.random(), Math.random(), Math.random())
-			}
-	
-			position.forEach( (pos, id) => {
-	
-				matrix.makeTranslation(pos.x, pos.y, pos.z);
-				
-				const scaleMatrix = new THREE.Matrix4().makeScale(2.5, 2.5, 2.5);
-				matrix.multiply(scaleMatrix);
-				instancedMesh.setMatrixAt(id, matrix);
-				
-				
-				instancedMesh.setColorAt(id, color);
-	
-				verticesIndex.push(id);
-			});
-	
-			instancedMesh.verticesIndexPosition = verticesIndex;
-			instancedMesh.instanceColor.needsUpdate = true;
-			
-			this.#scene.add(instancedMesh);
-
-			// this.setVerticesSize(this.#vertexMeshScale);
-			return instancedMesh;
+	// Set vertices size
+	setVerticesSize(size){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.resize(size);
+			this.#meshRenderer.vertices.update();
 		}
-		return null;
+		this.render();
 	}
+
+	setVerticesColor(color){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.setColor(new THREE.Color(color));
+			this.#meshRenderer.vertices.update();
+		}
+		this.render();
+	}
+
+	////////////
+
+	// // Show vertices as dots
+	// showVerticesAtPosition(position, randomColor = false, color) {
+
+	// 	if (this.#mesh) {
+	// 		const geometry = new THREE.SphereGeometry(0.01, 32, 32);
+	// 		const material = new THREE.MeshStandardMaterial();
+	
+	// 		const count = position.length;
+	// 		const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+		
+	
+	// 		const matrix = new THREE.Matrix4();
+	
+	// 		const verticesIndex = [];
+	// 		if(randomColor){
+	// 			color.setRGB(Math.random(), Math.random(), Math.random())
+	// 		} 
+	
+	// 		position.forEach( (pos, id) => {
+	
+	// 			matrix.makeTranslation(pos.x, pos.y, pos.z);
+				
+	// 			const scaleMatrix = new THREE.Matrix4().makeScale(2.5, 2.5, 2.5);
+	// 			matrix.multiply(scaleMatrix);
+	// 			instancedMesh.setMatrixAt(id, matrix);
+				
+				
+	// 			instancedMesh.setColorAt(id, color);
+	
+	// 			verticesIndex.push(id);
+	// 		});
+	
+	// 		instancedMesh.verticesIndexPosition = verticesIndex;
+	// 		instancedMesh.instanceColor.needsUpdate = true;
+			
+	// 		this.#scene.add(instancedMesh);
+
+	// 		// this.setVerticesSize(this.#vertexMeshScale);
+	// 		return instancedMesh;
+	// 	}
+	// 	return null;
+	// }
 
 	updateVertices(){
 		this.showVertices(false);
@@ -382,48 +408,27 @@ export default class Viewer {
 	// CATMULLCLARK
 
 
-	// // Show the original edges
-	// showOriginalEdges(){
-	// 	if(this.#originalEdges){
-	// 		this.#originalEdges.addTo(this.#scene);
-	// 	}
-	// 	this.render();
-	// }
-
-	// // Clear the original edges from the scene
-	// clearOriginalEdges(){
-	// 	if (this.#originalEdges) {
-	// 		this.#scene.remove(this.#originalEdges.mesh);
-	// 	}
-	// 	this.render();
-	// }
-
-
-	showGeneration(display = true, genIndex, color = null){
+	showGeneration(display = true, genIndex){
 		if(display) {
 			if(this.#catmullClarkGenerations.length > 1 
 					&& genIndex < this.#catmullClarkGenerations.length - 1
-					&& this.#catmullClarkGenerations[genIndex]
-					&& (!this.#GenRenderer[genIndex] || color)) {
+					&& this.#catmullClarkGenerations[genIndex]) {
 
-				const position = this.#catmullClarkGenerations[genIndex].currentPosition();
-
-				if(color) {
-					this.#GenRenderer[genIndex] = this.showVerticesAtPosition(position, false, color);
-				} else {
-					this.#GenRenderer[genIndex] = this.showVerticesAtPosition(position, true);
-				}
+				this.#GenRenderer[genIndex] = GenRenderer(this.#catmullClarkGenerations[genIndex]);
+				this.#GenRenderer[genIndex].create();
+				this.#GenRenderer[genIndex].addTo(this.#scene);
 				
-				this.#GenRenderer[genIndex].genIndex = genIndex;
-				this.#GenRenderer[genIndex].color = new THREE.Color()
-				this.#GenRenderer[genIndex].getColorAt(0, this.#GenRenderer[genIndex].color)
+				this.#GenRenderer[genIndex].mesh.genIndex = genIndex;
+				this.#GenRenderer[genIndex].mesh.color = this.#GenRenderer[genIndex].params.color;
+				console.log(this.#GenRenderer[genIndex].mesh)
+				console.log(this.#GenRenderer[genIndex].mesh.genIndex)
 				
 			} else if(this.#GenRenderer[genIndex]){
-				this.#scene.add(this.#GenRenderer[genIndex]);
+				this.#GenRenderer[genIndex].addTo(this.#scene);
 			}
 		} else {
 			if(this.#catmullClarkGenerations.length > 1 && this.#GenRenderer[genIndex]){
-				this.#scene.remove(this.#GenRenderer[genIndex]);
+				this.#GenRenderer[genIndex].remove();
 			}
 		}
 		this.render();
@@ -431,36 +436,9 @@ export default class Viewer {
 
 	updateGenRenderer(){
 		for(const [id, gen] of Object.entries(this.#GenRenderer) ){
-			this.showGeneration(false, parseInt(id));
-			this.showGeneration(true, parseInt(id), this.#GenRenderer[parseInt(id)].color );
+			this.#GenRenderer[genIndex].update();
 		}
 	}
-
-	setGenVerticesSize(){
-		if (this.#vertices) {
-			this.#vertexMeshScale = scaleFactor
-			const instancedMesh = this.#vertices;		
-			// console.log(instancedMesh)
-			const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-	
-			position.forEach( (pos, id) => {
-	
-				const matrix = new THREE.Matrix4();
-				instancedMesh.getMatrixAt(id, matrix);
-				
-				const scaleMatrix = new THREE.Matrix4().makeScale(scaleFactor, scaleFactor, scaleFactor);
-				matrix.multiply(scaleMatrix);
-				
-				instancedMesh.setMatrixAt(id, matrix);
-
-			});
-			instancedMesh.instanceMatrix.needsUpdate = true
-
-		}
-		this.render();
-	}
-
-
 
 
 
@@ -486,9 +464,7 @@ export default class Viewer {
 
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 
-		let id = 0;
-
-		if((this.#GenRenderer.includes(intersects[ 0 ]?.object)) && intersects.length > 0){
+		if((intersects[0]?.object?.genIndex) && intersects.length > 0){
 			const instanceId = intersects[0]?.instanceId;
 			const gen = intersects[0]?.object.genIndex;
 
@@ -658,3 +634,5 @@ export default class Viewer {
 
 	
 }
+
+

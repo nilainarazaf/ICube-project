@@ -22,7 +22,7 @@ let RendererCellProto = {
 
 	delete: function(){
 		if(this.mesh){
-			this.remove();
+			if(this.parent) this.remove();
 			this.mesh?.geometry?.dispose();
 			delete this.mesh;
 		}
@@ -387,15 +387,21 @@ export {RendererCellProto};
 
 
 export function GenRenderer(genCatmullClark){
-	const position = genCatmullClark.currentPosition();
-
-	const vertices = (position == undefined) ? undefined :
+	
+		const vertices = (genCatmullClark == undefined) ? undefined :
 		Object.assign(Object.create(RendererCellProto), {
 			create: function(params = {}){
+				const position = genCatmullClark.currentPosition();
 				this.params = params;
 				const geometry = new THREE.SphereGeometry(0.01, 32, 32);
+
+				const color = params.color || new THREE.Color(0xff0000);
+				if(params.color == undefined){
+					color.setRGB(Math.random(), Math.random(), Math.random());
+				} 
+				params.color = color.clone();
+
 				const material = params.material || new THREE.MeshLambertMaterial({
-					color:params.color || 0xBBBBBB,
 					side: params.side || THREE.FrontSide,
 					transparent: params.transparent || false,
 					opacity: params.opacity || 1
@@ -406,13 +412,6 @@ export function GenRenderer(genCatmullClark){
 			
 		
 				const matrix = new THREE.Matrix4();
-		
-				const verticesIndex = [];
-				const color = new THREE.Color(0xff0000);
-				if(params.color == undefined){
-					color.setRGB(Math.random(), Math.random(), Math.random());
-				} 
-				params.color = color.clone();
 				
 				const size = params.size || 2.5;
 				position.forEach( (pos, id) => {
@@ -426,21 +425,21 @@ export function GenRenderer(genCatmullClark){
 					
 					instancedMesh.setColorAt(id, color);
 		
-					verticesIndex.push(id);
 				});
 		
-				instancedMesh.verticesIndexPosition = verticesIndex;
 				instancedMesh.instanceColor.needsUpdate = true;
 
 				this.mesh = instancedMesh;
+
+				this.mesh.genIndex = params.genIndex;
 			},
 
 
 			resize: function(size) {
 				this.params.size = size;
-			}
+			},
+
 		});
 
-		console.log(vertices)
 	return vertices;
 }

@@ -4,7 +4,6 @@ import Renderer from './CMapJS/Rendering/Renderer.js';
 import {GenRenderer} from './CMapJS/Rendering/Renderer.js';
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
 import { TransformControls } from './CMapJS/Libs/TransformControls.js';
-// import { MeshHandler } from './MeshHandler.js';
 
 export default class Viewer {
 	#renderer; // WebGL renderer
@@ -21,19 +20,16 @@ export default class Viewer {
 	#meshRenderer; // Renderer for the mesh
 
 	#faceNormals; // Array to store face normals
-
-	#vertexMeshScale = 2.5;
 	#vertexNormals; // Array to store vertex normals
-	#vertices = {}; // Array to store vertex positions
 
 	#intersected; // Variable to store the intersected object
+	#selected; // Variable to store the selected object
 
-	#selected;
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
-	#catmullClarkGenerations = [];
-
-	#GenRenderer = [];
+	// Catmull-Clark
+	#catmullClarkGenerations = []; // Array to store Catmull-Clark subdivision generations
+	#GenRenderer = []; // Array to store generation renderers
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -63,24 +59,19 @@ export default class Viewer {
 		// Add helpers (axes helper and directional light helper)
 		this.#helpers = new THREE.Group();
 		this.#helpers.add(new THREE.AxesHelper(1));
-		this.#scene.add(this.#helpers);
+		this.#helpers.add(new THREE.GridHelper(10, 100));
 
-		// const dirL = new THREE.DirectionalLight(0xfff, 0.8);
-		// this.#scene.add(dirL);
-		// dirL.position.set(10, 8, 5);
-
-		// const DLH = new THREE.DirectionalLightHelper(dirL, 5);
-		// this.#scene.add(DLH);
-
-		// Ajout d'un contrôleur de transformation
+		// Add trasform controler
 		const transformControls = new TransformControls(this.#camera, this.#renderer.domElement);
 		this.#transformControls = transformControls;
 		this.#scene.add(transformControls);
 	}
 
+	// get Array of all generations from CatmullClark
 	getCatmullClarkGenerations(){
         return this.#catmullClarkGenerations ? this.#catmullClarkGenerations : [];
 	}
+	// set Array of all generations from CatmullClark
 	setCatmullClarkGenerations(gen){
         this.#catmullClarkGenerations = gen;
 	}
@@ -112,11 +103,36 @@ export default class Viewer {
 	
 	// Update the renderer
 	updateMeshRenderer() {
-		this.#meshRenderer.edges.update();
-		this.#meshRenderer.faces.update();
-		this.#meshRenderer.vertices.update();
-		this.updateVertices();
+		if(this.#meshRenderer.edges.parent) this.#meshRenderer.edges.update();
+		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.update();
+		if(this.#meshRenderer.vertices.parent) this.#meshRenderer.vertices.update();
 	}
+
+	// Remove all from the scene
+	removeAll(){
+		if(this.#meshRenderer?.edges?.parent) this.#meshRenderer.edges.delete();
+		if(this.#meshRenderer?.faces?.parent) this.#meshRenderer.faces.delete();
+		if(this.#meshRenderer?.vertices?.parent) this.#meshRenderer.vertices.delete();
+		if(this.#GenRenderer) this.removeAllGen();
+		this.clearScene();
+	}
+
+	// Show all helpers
+	showHelpers(){
+		if(this.#helpers){
+			if(!this.#helpers.parent){
+				this.#scene.add(this.#helpers);
+			} else {
+				this.#scene.remove(this.#helpers);
+			}
+		}
+	}
+
+
+
+
+
+
 
 
 
@@ -125,10 +141,11 @@ export default class Viewer {
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// FACES
 
+	// Show all faces of the current mesh
 	showFaces(bool){
 		if(bool){
-			if (!this.#meshRenderer.faces.mesh) {
-				this.#meshRenderer.faces.create();
+			if (!this.#meshRenderer.faces?.mesh?.parent) {
+				this.#meshRenderer.faces.update();
 			}
 			this.#meshRenderer.faces.addTo(this.#scene);
 		} else {
@@ -158,37 +175,54 @@ export default class Viewer {
 	showFaceNormals(display) {
 		if(display){
 			if (this.#meshRenderer.faces.mesh) {
-				this.#faceNormals = []
+				this.#faceNormals = [];
 				const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 
-				this.#mesh.foreach(this.#mesh.vertex, vd => {
-					const centroid = position[this.#mesh.cell(this.#mesh.vertex, vd)]
-					const vertices = []
-		
+				this.#mesh.foreach(this.#mesh.face, vd => {
+					
 					const n = this.#mesh.degree(this.#mesh.vertex, vd);
-		
+					
 					let d0 = vd;
 					let d1 = d0;
+					
 					do {
 						d0 = this.#mesh.phi2[d0];
-						d1 = this.#mesh.phi_1[d0]
-						// centroid.add(position[this.#mesh.cell(this.#mesh.vertex, d1)]);
-						vertices.push(position[this.#mesh.cell(this.#mesh.vertex, d1)].clone())
+						d1 = this.#mesh.phi_1[d0];
+						
+						const centroid = new THREE.Vector3();
+						const neighboringVertices = [];
+						let d2 = d1;
+						let nbVertex = 0;
+						do{
+							const pos = position[this.#mesh.cell(this.#mesh.vertex, d2)].clone();
+							neighboringVertices.push(pos);
+							centroid.add(pos)
+							d2 = this.#mesh.phi1[d2];
+							nbVertex++;
+
+						} while (d2 != d1);
+
+						centroid.divideScalar(nbVertex);
+
+						let AB = new THREE.Vector3().subVectors(neighboringVertices[0], neighboringVertices[1]);
+						let AC = new THREE.Vector3().subVectors(neighboringVertices[0], neighboringVertices[2]);
+						let normal = new THREE.Vector3().crossVectors(AB, AC).normalize();
+						
+
+						/////////////////////////////////////
+
+						const arrowHelper = new THREE.ArrowHelper(normal, centroid, 0.3, 0xaa0000);
+						this.#scene.add(arrowHelper);
+
+						this.#faceNormals.push(arrowHelper);
+
+						/////////////////////////////////////
+
 		
 						d0 = this.#mesh.phi1[d0];	
-					} while (d0 != vd)
-					
-					// centroid.divideScalar(n);
+					} while (d0 != vd);					
 
-					const normal = this.calculerVecteurNormal(vertices[2], vertices[1], vertices[0])
-					console.log(normal, centroid)
-					const arrowHelper = new THREE.ArrowHelper(normal, centroid, 0.3, 0xff0000);
-					this.#scene.add(arrowHelper);
-
-					this.#faceNormals.push(arrowHelper);
 				});
-		
-				this.#meshRenderer.faces.mesh.geometry.colorsNeedUpdate = true;
 			}
 		} else {
 			if (this.#faceNormals) {
@@ -202,14 +236,24 @@ export default class Viewer {
 		this.render();
 	}
 
+
+
+
+
+
+
+
+
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// EDGE
 
+	// Show all edges of the current mesh
 	showEdges(bool){
 		if(bool){
-			if (!this.#meshRenderer.edges.mesh) {
-				this.#meshRenderer.edges.create();
+			if (!this.#meshRenderer.edges?.mesh?.parent) {
+				this.#meshRenderer.edges.update();
 			}
 			this.#meshRenderer.edges.addTo(this.#scene);
 		} else {
@@ -227,7 +271,7 @@ export default class Viewer {
 		this.render();
 	}
 
-	// Set the opacity of the mesh edges
+	// Set the size of the mesh edges
 	setEdgeSize(size) {
 		if(this.#meshRenderer.edges) {
 			this.#meshRenderer.edges.resize(size);
@@ -245,25 +289,15 @@ export default class Viewer {
 		this.render();
 	}
 
-	
 
-	
 
-	
-	// calculerVecteurNormal(pointA, pointB, pointC) {
-	// 	// Vecteur AB
-	// 	let AB = new THREE.Vector3().subVectors(pointB, pointA);
-		
-	// 	// Vecteur AC
-	// 	let AC = new THREE.Vector3().subVectors(pointC, pointA);
-		
-	// 	// Produit vectoriel AB x AC
-	// 	let normal = new THREE.Vector3().crossVectors(AB, AC).normalize();
-		
-	// 	return normal;
-	// }
 
-	
+
+
+
+
+
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// VERTEX
@@ -271,8 +305,8 @@ export default class Viewer {
 	// Show all vetices of the current mesh
 	showVertices(bool){
 		if(bool){
-			if (!this.#meshRenderer.vertices.mesh) {
-				this.#meshRenderer.vertices.create();
+			if (!this.#meshRenderer.vertices?.mesh?.parent) {
+				this.#meshRenderer.vertices.update();
 			}
 			this.#meshRenderer.vertices.addTo(this.#scene);
 		} else {
@@ -280,41 +314,70 @@ export default class Viewer {
 		}
 	}
 
+	// Set the opacity of the mesh vertices
+	setVerticesOpacity(opacity){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.setOpacity(opacity);
+			this.#meshRenderer.vertices.update();
+		}
+		this.render();
+	}
+
+	// Set the size of the mesh vertices
+	setVerticesSize(size){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.resize(size);
+			this.#meshRenderer.vertices.update();
+		}
+		this.render();
+	}
+
+	// Set the color of the mesh vertices
+	setVerticesColor(color){
+		if (this.#meshRenderer.vertices.mesh) {
+			this.#meshRenderer.vertices.setColor(new THREE.Color(color));
+			this.#meshRenderer.vertices.update();
+		}
+		this.render();
+	}
+
 	// Show vertices normals
-	showVertexNormals(display) {
+	showVertexNormals(display = true) {
 		if(display) {
-			if (this.#meshRenderer.faces.mesh) {
-				this.#faceNormals = []
+			if (this.#meshRenderer.vertices.mesh) {
+				this.#vertexNormals = []
 				const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 
 				this.#mesh.foreach(this.#mesh.vertex, vd => {
-					const centroid = position[this.#mesh.cell(this.#mesh.vertex, vd)]
-					const vertices = []
+					const centroid = position[this.#mesh.cell(this.#mesh.vertex, vd)].clone();
+					const neighboringVertices = [];
 		
 					const n = this.#mesh.degree(this.#mesh.vertex, vd);
 		
 					let d0 = vd;
-					let d1 = d0
 					do {
 						d0 = this.#mesh.phi2[d0];
-						d1 = this.#mesh.phi_1[d0]
-						// centroid.add(position[this.#mesh.cell(this.#mesh.vertex, d1)]);
-						vertices.push(position[this.#mesh.cell(this.#mesh.vertex, d1)].clone())
-		
-						d0 = this.#mesh.phi1[d0];
-					} while (d0 != vd)
-					
-					centroid.divideScalar(n);
 
-					const normal = this.calculerVecteurNormal(vertices[0], vertices[1], vertices[2])
-					console.log(normal, centroid)
-					const arrowHelper = new THREE.ArrowHelper(normal, centroid, 0.3, 0xff0000);
+						const pos = position[this.#mesh.cell(this.#mesh.vertex, d0)].clone();
+						neighboringVertices.push(pos);
+						d0 = this.#mesh.phi1[d0];
+
+					} while (d0 != vd);
+					
+					const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[1]);
+					const AC = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
+					const normal = new THREE.Vector3().crossVectors(AB, AC).normalize();
+					
+
+					/////////////////////////////////////
+
+					const arrowHelper = new THREE.ArrowHelper(normal, centroid, 0.3, 0x00aa00);
 					this.#scene.add(arrowHelper);
 
-					this.#faceNormals.push(arrowHelper);
+					this.#vertexNormals.push(arrowHelper);
+
+					/////////////////////////////////////
 				});
-		
-				this.#meshRenderer.faces.mesh.geometry.colorsNeedUpdate = true;
 			}
 		} else {
 			if (this.#vertexNormals) {
@@ -327,122 +390,78 @@ export default class Viewer {
 		this.render();
 	}
 
-	setVerticesOpacity(opacity){
-		if (this.#meshRenderer.vertices.mesh) {
-			this.#meshRenderer.vertices.setOpacity(opacity);
-			this.#meshRenderer.vertices.update();
-		}
-		this.render();
-	}
 
-	// Set vertices size
-	setVerticesSize(size){
-		if (this.#meshRenderer.vertices.mesh) {
-			this.#meshRenderer.vertices.resize(size);
-			this.#meshRenderer.vertices.update();
-		}
-		this.render();
-	}
 
-	setVerticesColor(color){
-		if (this.#meshRenderer.vertices.mesh) {
-			this.#meshRenderer.vertices.setColor(new THREE.Color(color));
-			this.#meshRenderer.vertices.update();
-		}
-		this.render();
-	}
 
-	////////////
 
-	// // Show vertices as dots
-	// showVerticesAtPosition(position, randomColor = false, color) {
 
-	// 	if (this.#mesh) {
-	// 		const geometry = new THREE.SphereGeometry(0.01, 32, 32);
-	// 		const material = new THREE.MeshStandardMaterial();
-	
-	// 		const count = position.length;
-	// 		const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-		
-	
-	// 		const matrix = new THREE.Matrix4();
-	
-	// 		const verticesIndex = [];
-	// 		if(randomColor){
-	// 			color.setRGB(Math.random(), Math.random(), Math.random())
-	// 		} 
-	
-	// 		position.forEach( (pos, id) => {
-	
-	// 			matrix.makeTranslation(pos.x, pos.y, pos.z);
-				
-	// 			const scaleMatrix = new THREE.Matrix4().makeScale(2.5, 2.5, 2.5);
-	// 			matrix.multiply(scaleMatrix);
-	// 			instancedMesh.setMatrixAt(id, matrix);
-				
-				
-	// 			instancedMesh.setColorAt(id, color);
-	
-	// 			verticesIndex.push(id);
-	// 		});
-	
-	// 		instancedMesh.verticesIndexPosition = verticesIndex;
-	// 		instancedMesh.instanceColor.needsUpdate = true;
-			
-	// 		this.#scene.add(instancedMesh);
 
-	// 		// this.setVerticesSize(this.#vertexMeshScale);
-	// 		return instancedMesh;
-	// 	}
-	// 	return null;
-	// }
 
-	updateVertices(){
-		this.showVertices(false);
-		this.showVertices(true);
-	}
-	
+
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////
 	// CATMULLCLARK
 
+	// Show generation of subdivision
+	showGeneration(display = true, id){
+		if(this.#mesh) {
+			if(display) {
+				if(this.#catmullClarkGenerations.length > 1 
+						&& id < this.#catmullClarkGenerations.length - 1
+						&& this.#catmullClarkGenerations[id]
+						&& (!this.#GenRenderer || !this.#GenRenderer[id])) {
 
-	showGeneration(display = true, genIndex){
-		if(display) {
-			if(this.#catmullClarkGenerations.length > 1 
-					&& genIndex < this.#catmullClarkGenerations.length - 1
-					&& this.#catmullClarkGenerations[genIndex]) {
+					this.#GenRenderer[id] = GenRenderer(this.#catmullClarkGenerations[id]);
 
-				this.#GenRenderer[genIndex] = GenRenderer(this.#catmullClarkGenerations[genIndex]);
-				this.#GenRenderer[genIndex].create();
-				this.#GenRenderer[genIndex].addTo(this.#scene);
-				
-				this.#GenRenderer[genIndex].mesh.genIndex = genIndex;
-				this.#GenRenderer[genIndex].mesh.color = this.#GenRenderer[genIndex].params.color;
-				console.log(this.#GenRenderer[genIndex].mesh)
-				console.log(this.#GenRenderer[genIndex].mesh.genIndex)
-				
-			} else if(this.#GenRenderer[genIndex]){
-				this.#GenRenderer[genIndex].addTo(this.#scene);
-			}
-		} else {
-			if(this.#catmullClarkGenerations.length > 1 && this.#GenRenderer[genIndex]){
-				this.#GenRenderer[genIndex].remove();
+					this.#GenRenderer[id].create({genIndex:id});
+
+					this.#GenRenderer[id].addTo(this.#scene);
+					
+
+					this.#GenRenderer[id].mesh.color = this.#GenRenderer[id].params.color;
+					
+				} else if(this.#GenRenderer[id]){
+					this.#GenRenderer[id].addTo(this.#scene);
+				}
+			} else {
+				if(this.#catmullClarkGenerations.length > 1 && this.#GenRenderer[id]){
+					this.#GenRenderer[id].remove();
+				}
 			}
 		}
 		this.render();
 	}
 
-	updateGenRenderer(){
-		for(const [id, gen] of Object.entries(this.#GenRenderer) ){
-			this.#GenRenderer[genIndex].update();
-		}
+	// Update renderer of generation
+	updateGenRenderer(params = undefined){
+		this.#GenRenderer.forEach( gen => {
+			gen.update();
+		});
 	}
 
+	// Remove all generations from the scene
+	removeAllGen(){
+		this.#GenRenderer.forEach( gen => {
+			if(gen.parent) gen.remove();
+		});
+	}
 
+	// Set opacity of all generations
+	setGenOpacity(opacity){
+		this.#GenRenderer.forEach( gen => {
+			gen.setOpacity(opacity);
+			gen.update();
+		});
+	}
 
-
+	// Set size of all generations
+	setGenSize(size){
+		this.#GenRenderer.forEach( gen => {
+			gen.resize(size);
+			gen.update();
+		});
+	}
 
 
 
@@ -464,53 +483,53 @@ export default class Viewer {
 
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 
-		if((intersects[0]?.object?.genIndex) && intersects.length > 0){
-			const instanceId = intersects[0]?.instanceId;
-			const gen = intersects[0]?.object.genIndex;
+		if((intersects[ 0 ]?.object?.genIndex != undefined) && intersects.length > 0){
+			const instanceId = intersects[ 0 ]?.instanceId;
 
-				if ( this.#intersected ) this.#intersected.mesh.setColorAt( instanceId, this.#intersected.currentHex );
-				this.#intersected = {};
-				this.#intersected.mesh = intersects[ 0 ].object
-				this.#intersected.id = instanceId;
-				
-				this.#intersected.currentHex = new THREE.Color();
-				this.#intersected.mesh.getColorAt( instanceId, this.#intersected.currentHex );
+			if ( this.#intersected ) this.#intersected.mesh.setColorAt( instanceId, this.#intersected.color );
+			this.#intersected = {
+				mesh : intersects[ 0 ].object,
+				id : instanceId,
+				color : new THREE.Color(),
+			};
+			this.#intersected.mesh.getColorAt( instanceId, this.#intersected.color );
 
-				const color = new THREE.Color(0xcccccc);
-				this.#intersected.mesh.setColorAt( instanceId, color );
+			
+			const color = new THREE.Color(0xffffff);
+			this.#intersected.mesh.setColorAt( instanceId, color );
 
-				this.#intersected.mesh.instanceColor.needsUpdate = true; 
+			this.#intersected.mesh.instanceColor.needsUpdate = true; 
 		
 		} else {
 			if ( this.#intersected ) {
-				this.#intersected.mesh.setColorAt( this.#intersected.id, this.#intersected.currentHex );
+				this.#intersected.mesh.setColorAt( this.#intersected.id, this.#intersected.color );
 				this.#intersected.mesh.instanceColor.needsUpdate = true;
 			}
-			this.#intersected = null;
+			this.#intersected = undefined;
 		}
 
 		this.render();
 	}
 
-	// select mesh by by mouse pointer
+	// select mesh by mouse pointer
 	selectMesh(pointer){
 		this.#raycaster.setFromCamera(pointer, this.#camera);
 
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
-		
-		let id = 0;
-		
-		if((this.#GenRenderer.includes(intersects[ 0 ]?.object)) && intersects.length > 0){
-			const instanceId = intersects[0]?.instanceId;
-			const gen = intersects[0]?.object.genIndex
-			// console.log("...", instanceId, this.#selected?.id, this.#selected?.mesh, intersects[ 0 ]?.object)
+				
+		if((intersects[ 0 ]?.object?.genIndex != undefined) && intersects.length > 0){
+			const instanceId = intersects[ 0 ]?.instanceId;
+			const gen = intersects[ 0 ]?.object.genIndex;
 			
 			if ( ((gen != this.#selected?.genIndex) && (this.#selected?.mesh.uuid != intersects[ 0 ]?.object.uuid))
 				|| (this.#selected?.id != instanceId) ) {
-				if ( this.#selected ) this.#selected.mesh.setColorAt( instanceId, this.#intersected.currentHex );
-				this.#selected = {'id':instanceId};
-				this.#selected.mesh = intersects[ 0 ].object
-				// console.log(this.#selected);
+
+				if ( this.#selected ) this.#selected.mesh.setColorAt( instanceId, this.#intersected.color );
+				this.#selected = {
+					mesh : intersects[ 0 ].object,
+					id : instanceId,
+					gen : gen,
+				};
 
 				this.selectInstance(instanceId);
 				
@@ -521,73 +540,65 @@ export default class Viewer {
 				this.clearScene();
 			}
 			this.#selected = null;
-			
+			this.#intersected = null;
 		}
 
 		this.render();
 	}
 	
-	// Fonction pour sélectionner et manipuler une instance spécifique
+	// Selecte one specific instance of the selected mesh
 	selectInstance(instanceId) {
-		const instancedMesh = this.#selected.mesh;
-
-		const indexPos = instancedMesh.verticesIndexPosition[instanceId];
+		const indexPos = instanceId;
 
 		const dummy = new THREE.Object3D();
 		this.#selected.dummy = dummy;
 		this.#scene.add(dummy);
 		
-		
-		instancedMesh.getMatrixAt(instanceId, dummy.matrix);
+		this.#selected.mesh.getMatrixAt(instanceId, dummy.matrix);
 		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 		
+		// // add for current mesh trasform
+		// const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
+		// let gen = indexGeneration[indexPos];
 		
-		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
-		let gen = indexGeneration[indexPos];
-		
-		if(this.#selected.mesh?.genIndex) gen = this.#selected.mesh.genIndex
+		const gen = this.#selected.gen;
 
-		const pos0 = this.#catmullClarkGenerations[gen].initialPosition[indexPos].clone()
-		console.log(gen, pos0 , indexPos)
+		const pos0 = this.#catmullClarkGenerations[gen].initialPosition[indexPos];
 		
 		this.#transformControls.attach(dummy);
 
 		this.#transformControls.addEventListener('objectChange', () => {
-			// instancedMesh.getMatrixAt(instanceId, dummy.matrix);
-			// dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-
-			// console.log(dummy.matrix)
 			const pos = dummy.position.clone();
 			pos.sub(pos0.clone());
 			this.changeVertexPosition(pos.clone());
 
+			this.updateMeshRenderer();
 			this.updateGenRenderer();
-			
 		});
 
-		// console.log("new lis")
 		this.#transformControls.addEventListener('mouseDown', () => {
 			this.#orbitControls.enabled = false;
 			this.#transformControls.addEventListener('mouseUp', () => {
 				this.#orbitControls.enabled = true;
-				// this.#transformControls.removeEventListener('mouseUp')
 			})
-			// this.#transformControls.removeEventListener('mouseDown')
 		})
 	}
 
+	// Clear the scene from interactions (transforms, normals, etc)
 	clearScene(){
 		if(this.#transformControls && this.#selected){
 			this.#transformControls.detach();
 			this.#scene.remove(this.#selected.dummy);
-			this.#selected.dummy = null;
-			this.#selected = null;
+			this.#selected.dummy = undefined;
+			this.#selected = undefined;
 		}
+		this.showFaceNormals(false);
+		this.showVertexNormals(false);
 	}
-	
 
 
-	
+
+
 
 
 
@@ -601,21 +612,16 @@ export default class Viewer {
 	// transform selected vertex
 	changeVertexPosition(transformVector){
 
-		const positionIndex = this.#vertices.verticesIndexPosition[this.#selected.id];
+		const positionIndex = this.#selected.id;
 		
-		// const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
-		
-		const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
-		let genToUpdate = this.#selected.mesh.genIndex;
+		let genToUpdate = this.#selected.gen;
 
 		if(this.#catmullClarkGenerations.length >= 0 && genToUpdate <= this.#catmullClarkGenerations.length){
 			
 			this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
-
-			this.#catmullClarkGenerations[genToUpdate].toTransform = true
+			this.#catmullClarkGenerations[genToUpdate].toTransform = true;
 
 			while (genToUpdate < this.#catmullClarkGenerations.length) {
-				// console.log(this.#catmullClarkGenerations, genToUpdate)
 				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
 				
 				genToUpdate++;
@@ -623,16 +629,8 @@ export default class Viewer {
 					this.#catmullClarkGenerations[genToUpdate].updateInitialPosition(this.#mesh)
 				}
 			}
-			// console.log(this.#catmullClarkGenerations)
 		}
-	
-		this.updateMeshRenderer();
-		this.updateGenRenderer();
-		
-		this.render();
 	}
-
-	
 }
 
 

@@ -1,5 +1,5 @@
+
 // Import necessary modules
-import CMap0 from './CMapJS/CMap/CMap0.js';
 import * as THREE from './CMapJS/Libs/three.module.js';
 import DataHandler from './DataHandler.js';
 import CatmullClark, { catmullClark_inter } from './CMapJS/Modeling/Subdivision/Surface/CatmullClark.js';
@@ -13,8 +13,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Initialize data handler and viewer
-const dataHandler = new DataHandler();
-const viewer = new Viewer(renderer);
+let dataHandler = new DataHandler();
+let viewer = new Viewer(renderer);
 const mousePsoition = new THREE.Vector2();
 
 // vertex edited
@@ -31,6 +31,11 @@ window.addEventListener('resize', function() {
 ///////////////////////////////////////////////
 // GUI for setting parameters on the mesh
 const guiParams = {
+    reset: function() {
+        viewer.removeAll();
+        dataHandler = new DataHandler();
+        viewer = new Viewer(renderer);
+    },
     // file
     loadFile: function() {
         document.getElementById('fileInput').click();
@@ -41,13 +46,18 @@ const guiParams = {
         saveFile();
     },
 
+    // helpers
+    helpers: function(){
+        viewer.showHelpers();
+    },
+
     // Settings
     // Faces
     showFaces: true,
     faceOpacity: 1,
     faceColor: 0x0099FF,
     
-	faceNormals: false,
+	facesNormals: false,
 
     // Edges
     showEdges: true,
@@ -65,11 +75,13 @@ const guiParams = {
     
     // CatmullClark
     generationCount: 0,
-	iteration: 1,
-	applyCatmullClark: function() {
-        applyCatmullClark(guiParams.iteration);
+	applySubdivision: function() {
+        applySubdivision(guiParams.subdivision);
     },
-    genScale: 1,
+    subdivision: 'CatmullClark',
+
+    // Generation
+    generation: 0,
     genToShow: 0,
 	showGeneration: function() {
         viewer.showGeneration(true, guiParams.genToShow);
@@ -77,7 +89,15 @@ const guiParams = {
     genToRemove: 0,
 	clearGeneration: function() {
         viewer.showGeneration(false, guiParams.genToRemove);
+        viewer.clearScene();
     },
+    removeAllGen: function() {
+        viewer.removeAllGen();
+        viewer.clearScene();
+    },
+    genOpacity: 1,
+    genSize: 2.5,
+
 };
 
 ///////////////////////////////////////////////
@@ -85,7 +105,8 @@ const guiParams = {
 const gui = new GUI();
     gui.domElement.addEventListener('click', function(event) {
         event.stopPropagation();
-    })
+    });
+    gui.add(guiParams, 'reset').name('Reset');
 
 // File
 const file = gui.addFolder('File');
@@ -93,8 +114,13 @@ const file = gui.addFolder('File');
     file.add(guiParams, 'fileName');
     file.add(guiParams, 'saveFile').name('Save File');
 
-// Options
+// Helpers
+const helpers = gui.addFolder('Helpers');
+    helpers.close();
+    helpers.add(guiParams, 'helpers');
 
+// Settings
+// Faces
 const guiFace = gui.addFolder('Face');
     guiFace.close();
     guiFace.add(guiParams, 'showFaces').onChange(bool => {
@@ -108,11 +134,11 @@ const guiFace = gui.addFolder('Face');
         viewer.setFaceColor(color);
     });
 
-    guiFace.add(guiParams, 'faceNormals').onChange(bool => {
+    guiFace.add(guiParams, 'facesNormals').listen().onChange(bool => {
             viewer.showFaceNormals(bool);
     });
 
-
+// Edges :
 const guiEdge = gui.addFolder('Edge');
     guiEdge.close();
     guiEdge.add(guiParams, 'showEdges').onChange(bool => {
@@ -129,7 +155,7 @@ const guiEdge = gui.addFolder('Edge');
         viewer.setEdgeColor(color);
     });
 
-
+// Vetices :
 const guiVertex = gui.addFolder('Vertex');
     guiVertex.close();
     guiVertex.add(guiParams, 'showVertices').onChange(bool => {
@@ -139,38 +165,48 @@ const guiVertex = gui.addFolder('Vertex');
     guiVertex.add(guiParams, 'verticesOpacity', 0.01, 1, 0.01).onChange(opacity => {
         viewer.setVerticesOpacity(opacity);
     });
-    guiVertex.add(guiParams, 'verticesSize', 0.001, 0.2, 0.00001).onChange(size => {
+    guiVertex.add(guiParams, 'verticesSize', 0.001, 0.03, 0.00001).onChange(size => {
         viewer.setVerticesSize(size);
     });
     guiVertex.addColor(guiParams, 'verticesColor').onChange(color => {
         viewer.setVerticesColor(color);
     });
     
-    guiVertex.add(guiParams, 'verticesNormals').onChange(bool => {
+    guiVertex.add(guiParams, 'verticesNormals').listen().onChange(bool => {
         viewer.showVertexNormals(bool);
     });
 
 
 
 // CatmullClark
-const catmullClark = gui.addFolder('CatmullClark');
-catmullClark.add(guiParams, 'generationCount').name('Generation count').listen().disable();
+const subdivision = gui.addFolder('Subdivision');
 
-catmullClark.add(guiParams, 'iteration');
-catmullClark.add(guiParams, 'applyCatmullClark').name('Apply');
-let scaleGenBuff = 1;
-catmullClark.add(guiParams, 'genScale', 0.1, 2, 0.05).onChange(scale => {
-        if(scale != 0) {
-            if(scaleGenBuff != 1) scaleGenBuff = 1 / scaleGenBuff;
-            viewer.setGenVerticesSize(scaleGenBuff);
-            viewer.setGenVerticesSize(scale);
-            scaleGenBuff = scale;
-        }
+    subdivision.add(guiParams, 'subdivision', ['CatmullClark', 'CatmullClark-Inter', 'Butterfly'])
+    subdivision.add(guiParams, 'generationCount').name('Generation count').listen().disable();
+    subdivision.add(guiParams, 'applySubdivision').name('Apply');
+
+// Generations
+const generation = gui.addFolder('Generation');
+    generation.close();
+    const showGen = generation.add(guiParams, 'generation', 0, 1, 1).listen().onChange( gen => {
+        viewer.clearScene();
+        viewer.removeAllGen();
+        viewer.showGeneration(true, gen);
     });
-catmullClark.add(guiParams, 'genToShow');
-catmullClark.add(guiParams, 'showGeneration').name('show Generation');
-catmullClark.add(guiParams, 'genToRemove');
-catmullClark.add(guiParams, 'clearGeneration').name('clear Generation');
+    generation.add(guiParams, 'genToShow');
+    generation.add(guiParams, 'showGeneration').name('show Generation');
+    generation.add(guiParams, 'genToRemove');
+    generation.add(guiParams, 'clearGeneration').name('remove Generation');
+    generation.add(guiParams, 'removeAllGen').name('Remove all Generations');
+
+const genSettings = gui.addFolder('Generation Setting')
+    genSettings.close();
+    genSettings.add(guiParams, 'genOpacity', 0.01, 1, 0.01).onChange(opacity => {
+        viewer.setGenOpacity(opacity);
+    });
+    genSettings.add(guiParams, 'genSize', 0.1, 3, 0.1).onChange(size => {
+        viewer.setGenSize(size);
+    });
 
 ///////////////////////////////////////////////
 // Handle file input change event
@@ -204,33 +240,56 @@ function saveFile() {
     document.body.removeChild(link);
 }
 
+
+///////////////////////////////////////////////
+// Apply function
+function applySubdivision(sub){
+    switch (sub) {
+        case 'CatmullClark':
+            applyCatmullClark();
+            break;
+
+        case 'CatmullClark-Inter':
+            // CatmullClark-Inter();
+            break;
+
+        case 'Butterfly':
+            // butterfly();
+            break;
+    
+        default:
+            break;
+    }
+}
+
+
 ///////////////////////////////////////////////
 // Apply Catmull-Clark subdivision
 function applyCatmullClark() {
-    const generations = viewer.getCatmullClarkGenerations();
+    if(dataHandler.mesh){
+        const generations = viewer.getCatmullClarkGenerations();
     
-    const gen = CatmullClark(dataHandler.mesh, generations);
-    
-    viewer.setCatmullClarkGenerations(gen);
-    
-    viewer.updateMeshRenderer();
-    
-    viewer.clearScene();
-    guiParams.generationCount = gen.length-1;
+        const gen = CatmullClark(dataHandler.mesh, generations);
+        
+        viewer.setCatmullClarkGenerations(gen);
+        
+        guiParams.generationCount = gen.length-1;
+        showGen.max(guiParams.generationCount - 1);
+        
+        update();
+    }
     render();
 };
 
-///////////////////////////////////////////////
-// Show normals function
-function showNormal(normal) {
-    // const normalVec = new THREE.Vector3(10, 10, 10);
-    // viewer.addLine(null, normalVec);
-}
 
 ///////////////////////////////////////////////
 // Update function
 function update() {
-    // This function can be used to update the scene
+    viewer.updateMeshRenderer();
+    viewer.updateGenRenderer();    
+    viewer.clearScene();
+    guiParams.facesNormals = false;
+    guiParams.verticesNormals = false;
 }
 
 ///////////////////////////////////////////////
@@ -272,14 +331,12 @@ function listner() {
         const y = e.clientY - canvasBounds.top;
         
         if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
-            // console.log(mousePsoition);
             viewer.selectMesh(mousePsoition);
-            // update()
         };
     });
 }
 
-listner(); // Add listner
+listner();
 mainloop();
 
 
@@ -288,9 +345,9 @@ mainloop();
 
 
 
-///////////////////////////////////////::::
 ////////////////////////////////////////////
-///////////////////////////////////////////
+////////////////////////////////////////////
+////////////////////////////////////////////
 
 
 

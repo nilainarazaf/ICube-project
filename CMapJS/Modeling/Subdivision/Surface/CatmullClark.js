@@ -13,14 +13,12 @@ export default function catmullClark(cmap, generations = []){
 		gen = new GenCatmullClark(cmap, genIndex+1);
 		generations.push(gen);
 	} else {
-		// console.log(genIndex)
 		generations[genIndex-1].buildNextGeneration(cmap);
 
 		gen = new GenCatmullClark(cmap, genIndex);
 		generations.push(gen);
 	}
 
-	// console.log(generations);
 	return generations;
 
 }
@@ -48,13 +46,12 @@ export function catmullClark_inter(cmap){
 		vd => {
 			edgeVerticesCache.push(vd);
 
-			let vid = cmap.cell(vertex, vd); // prend tous les points assosies a ce sommet
-			// console.log(cmap.cell(vertex, vd)); // print
-			pos[vid] = new Vector3(); // init les position des point en relaation avec le sommet
-			cmap.foreachDartOf(vertex, vd, d => { // prend tous les indices de chaque point dans les brins
-				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]); // prend les points de la face assossie
+			let vid = cmap.cell(vertex, vd); 
+			pos[vid] = new Vector3();
+			cmap.foreachDartOf(vertex, vd, d => { 
+				pos[vid].add(pos[cmap.cell(vertex, cmap.phi2[d])]); 
 			});
-			pos[vid].multiplyScalar(0.5); // deplace les points vers le bas
+			pos[vid].multiplyScalar(0.5); 
 		},
 		vd => {
 			faceVerticesCache.push(vd);
@@ -212,16 +209,11 @@ class GenCatmullClark {
 		const weights = [];
 
         quadrangulateAllFaces(cmap, 
-			/// on coupe toutes les aretes en deux
 			vd => { 
 				edgeVerticesCache.push(vd);
 	
-	
-				/// initialisation des poids du nouveau sommet arête
 				const vid = cmap.cell(vertex, vd);
 	
-	
-				/// poids initiaux : sommet arete == milieu de l'arete initiale
 				const weightEdge = {};
 				weightEdge[cmap.cell(vertex, cmap.phi1[vd])] = 0.5;
 				weightEdge[cmap.cell(vertex, cmap.phi_1[vd])] = 0.5;
@@ -229,18 +221,13 @@ class GenCatmullClark {
 	
 				weights[vid] = weightEdge;
 			},
-			/// on coupe toutes les faces en quads
 			vd => { 
 				faceVerticesCache.push(vd);
 	
 	
-				// initialisation des poids du nouveau sommet face
 				const vid = cmap.cell(vertex, vd);
 				const n = cmap.degree(vertex, vd);
 	
-	
-				/// poids initiaux : sommet face = moyenne des points initiaux, ou des points aretes
-				/// -> on somme tout les poids des points aretes autour
 				const weightFace = {};
 	
 	
@@ -252,7 +239,7 @@ class GenCatmullClark {
 	
 	
 					for(const [vid2, w] of Object.entries(weightEdge)) {
-						weightFace[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+						weightFace[vid2] ??= 0;
 						weightFace[vid2] += w / n; 
 					}
 		
@@ -263,8 +250,6 @@ class GenCatmullClark {
 				weights[vid] = weightFace;
 		});
 	
-	
-		/// parcourt des sommets initiaux pour compléter les poids
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
 			const n = cmap.degree(vertex, vd);
@@ -272,7 +257,6 @@ class GenCatmullClark {
 	
 	
 			let d0 = vd;
-			// let d1 = d0;
 			const weightInit = {};
 			weightInit[vid] = (n - 3) / n;
 	
@@ -288,13 +272,13 @@ class GenCatmullClark {
 	
 	
 				for(const [vid2, w] of Object.entries(weightEdge)) {
-					weightInit[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+					weightInit[vid2] ??= 0;
 					weightInit[vid2] += 2 * w / n2; 
 				}
 	
 	
 				for(const [vid2, w] of Object.entries(weightFace)) {
-					weightInit[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+					weightInit[vid2] ??= 0;
 					weightInit[vid2] += w / n2; 
 				}
 	
@@ -309,10 +293,6 @@ class GenCatmullClark {
 			
 		}, {cache: initVerticesCache})
 	
-	
-	
-	
-		/// parcourt des sommets aretes pour compléter les poids
 		cmap.foreach(vertex, vd => {
 			const vidEdge = cmap.cell(vertex, vd);
 			const weightEdge = weights[vidEdge];
@@ -329,13 +309,13 @@ class GenCatmullClark {
 	
 	
 			for(const [vid2, w] of Object.entries(weightFace0)) {
-				weightEdge[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+				weightEdge[vid2] ??= 0; 
 				weightEdge[vid2] += w / 4; 
 			}
 	
 	
 			for(const [vid2, w] of Object.entries(weightFace1)) {
-				weightEdge[vid2] ??= 0; /// si le poids n'existait pas initialisation à 0
+				weightEdge[vid2] ??= 0; 
 				weightEdge[vid2] += w / 4; 
 			}
 			

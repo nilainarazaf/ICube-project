@@ -111,7 +111,7 @@ const gui = new GUI();
 // File
 const file = gui.addFolder('File');
     file.add(guiParams, 'loadFile').name('Load File');
-    file.add(guiParams, 'fileName');
+    file.add(guiParams, 'fileName').name('file name');
     file.add(guiParams, 'saveFile').name('Save File');
 
 // Helpers
@@ -165,8 +165,8 @@ const guiVertex = gui.addFolder('Vertex');
     guiVertex.add(guiParams, 'verticesOpacity', 0.01, 1, 0.01).onChange(opacity => {
         viewer.setVerticesOpacity(opacity);
     });
-    guiVertex.add(guiParams, 'verticesSize', 0.001, 0.03, 0.00001).onChange(size => {
-        viewer.setVerticesSize(size);
+    guiVertex.add(guiParams, 'verticesSize', 0.1, 3, 0.1).onChange(size => {
+        viewer.setVerticesSize(size/100);
     });
     guiVertex.addColor(guiParams, 'verticesColor').onChange(color => {
         viewer.setVerticesColor(color);
@@ -267,11 +267,11 @@ function applySubdivision(sub){
 // Apply Catmull-Clark subdivision
 function applyCatmullClark() {
     if(dataHandler.mesh){
-        const generations = viewer.getCatmullClarkGenerations();
+        const generations = viewer.getGenerations();
     
         const gen = CatmullClark(dataHandler.mesh, generations);
         
-        viewer.setCatmullClarkGenerations(gen);
+        viewer.setGenerations(gen);
         
         guiParams.generationCount = gen.length-1;
         showGen.max(guiParams.generationCount - 1);
@@ -356,7 +356,11 @@ mainloop();
 
 
 
+// const quaternion = new THREE.Quaternion();
+// quaternion.setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), Math.PI / 2 );
 
+// const vector = new THREE.Vector3( 1, 0, 0 );
+// vector.applyQuaternion( quaternion );
 
 
 

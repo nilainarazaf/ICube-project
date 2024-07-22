@@ -351,11 +351,12 @@ class GenCatmullClark {
 
 	}
 
+	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex] = transformVector;
 	}
 
-
+	// Update position with transforms
 	updatePosition(cmap, current = false){
 
 		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
@@ -376,6 +377,8 @@ class GenCatmullClark {
 
 	}
 
+	// When a generation befor this is currently setting, 
+	// Initial positions of this generation must be set with its transforms
 	updateInitialPosition(cmap){
 		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
 		this.initialPosition.forEach( (pos, id) => {
@@ -384,6 +387,7 @@ class GenCatmullClark {
 		} )
 	}
 
+	// Give current position of this generation with its transforms
 	currentPosition(){
 		const currentPosition = []
 		this.initialPosition.forEach( (pos, id) => {

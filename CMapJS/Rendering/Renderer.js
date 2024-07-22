@@ -386,12 +386,12 @@ export {RendererCellProto};
 
 
 
-export function GenRenderer(genCatmullClark){
+export function GenRenderer(generation){
 	
-		const vertices = (genCatmullClark == undefined) ? undefined :
-		Object.assign(Object.create(RendererCellProto), {
-			create: function(params = {}){
-				const position = genCatmullClark.currentPosition();
+	const vertices = (generation == undefined) ? undefined :
+	Object.assign(Object.create(RendererCellProto), {
+		create: function(params = {}){
+				const position = generation.currentPosition();
 				this.params = params;
 				const geometry = new THREE.SphereGeometry(0.01, 32, 32);
 

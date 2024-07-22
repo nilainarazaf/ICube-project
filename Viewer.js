@@ -27,9 +27,8 @@ export default class Viewer {
 
 	#raycaster = new THREE.Raycaster(); // Raycaster for mouse interactions
 
-	// Catmull-Clark
-	#catmullClarkGenerations = []; // Array to store Catmull-Clark subdivision generations
-	#GenRenderer = []; // Array to store generation renderers
+	#generations = []; // Array to store subdivision generations
+	#genRenderer = []; // Array to store generation renderers
 
 	constructor(renderer) {
 		// Initialize the renderer
@@ -68,12 +67,12 @@ export default class Viewer {
 	}
 
 	// get Array of all generations from CatmullClark
-	getCatmullClarkGenerations(){
-        return this.#catmullClarkGenerations ? this.#catmullClarkGenerations : [];
+	getGenerations(){
+        return this.#generations ? this.#generations : [];
 	}
 	// set Array of all generations from CatmullClark
-	setCatmullClarkGenerations(gen){
-        this.#catmullClarkGenerations = gen;
+	setGenerations(gen){
+        this.#generations = gen;
 	}
 
 	// Render the scene
@@ -113,7 +112,7 @@ export default class Viewer {
 		if(this.#meshRenderer?.edges?.parent) this.#meshRenderer.edges.delete();
 		if(this.#meshRenderer?.faces?.parent) this.#meshRenderer.faces.delete();
 		if(this.#meshRenderer?.vertices?.parent) this.#meshRenderer.vertices.delete();
-		if(this.#GenRenderer) this.removeAllGen();
+		if(this.#genRenderer) this.removeAllGen();
 		this.clearScene();
 	}
 
@@ -407,26 +406,27 @@ export default class Viewer {
 	showGeneration(display = true, id){
 		if(this.#mesh) {
 			if(display) {
-				if(this.#catmullClarkGenerations.length > 1 
-						&& id < this.#catmullClarkGenerations.length - 1
-						&& this.#catmullClarkGenerations[id]
-						&& (!this.#GenRenderer || !this.#GenRenderer[id])) {
+				if(this.#generations.length > 1 
+						&& id < this.#generations.length - 1
+						&& this.#generations[id]
+						&& (!this.#genRenderer || !this.#genRenderer[id])) {
 
-					this.#GenRenderer[id] = GenRenderer(this.#catmullClarkGenerations[id]);
+					// const position = .currentPosition();
+					this.#genRenderer[id] = GenRenderer(this.#generations[id]);
 
-					this.#GenRenderer[id].create({genIndex:id});
+					this.#genRenderer[id].create({genIndex:id});
 
-					this.#GenRenderer[id].addTo(this.#scene);
+					this.#genRenderer[id].addTo(this.#scene);
 					
 
-					this.#GenRenderer[id].mesh.color = this.#GenRenderer[id].params.color;
+					this.#genRenderer[id].mesh.color = this.#genRenderer[id].params.color;
 					
-				} else if(this.#GenRenderer[id]){
-					this.#GenRenderer[id].addTo(this.#scene);
+				} else if(this.#genRenderer[id]){
+					this.#genRenderer[id].addTo(this.#scene);
 				}
 			} else {
-				if(this.#catmullClarkGenerations.length > 1 && this.#GenRenderer[id]){
-					this.#GenRenderer[id].remove();
+				if(this.#generations.length > 1 && this.#genRenderer[id].parent){
+					this.#genRenderer[id].remove();
 				}
 			}
 		}
@@ -435,21 +435,21 @@ export default class Viewer {
 
 	// Update renderer of generation
 	updateGenRenderer(params = undefined){
-		this.#GenRenderer.forEach( gen => {
+		this.#genRenderer.forEach( gen => {
 			gen.update();
 		});
 	}
 
 	// Remove all generations from the scene
 	removeAllGen(){
-		this.#GenRenderer.forEach( gen => {
+		this.#genRenderer.forEach( gen => {
 			if(gen.parent) gen.remove();
 		});
 	}
 
 	// Set opacity of all generations
 	setGenOpacity(opacity){
-		this.#GenRenderer.forEach( gen => {
+		this.#genRenderer.forEach( gen => {
 			gen.setOpacity(opacity);
 			gen.update();
 		});
@@ -457,7 +457,7 @@ export default class Viewer {
 
 	// Set size of all generations
 	setGenSize(size){
-		this.#GenRenderer.forEach( gen => {
+		this.#genRenderer.forEach( gen => {
 			gen.resize(size);
 			gen.update();
 		});
@@ -563,7 +563,7 @@ export default class Viewer {
 		
 		const gen = this.#selected.gen;
 
-		const pos0 = this.#catmullClarkGenerations[gen].initialPosition[indexPos];
+		const pos0 = this.#generations[gen].initialPosition[indexPos];
 		
 		this.#transformControls.attach(dummy);
 
@@ -616,17 +616,17 @@ export default class Viewer {
 		
 		let genToUpdate = this.#selected.gen;
 
-		if(this.#catmullClarkGenerations.length >= 0 && genToUpdate <= this.#catmullClarkGenerations.length){
+		if(this.#generations.length >= 0 && genToUpdate <= this.#generations.length){
 			
-			this.#catmullClarkGenerations[genToUpdate].addTransform(positionIndex, transformVector);
-			this.#catmullClarkGenerations[genToUpdate].toTransform = true;
+			this.#generations[genToUpdate].addTransform(positionIndex, transformVector);
+			this.#generations[genToUpdate].toTransform = true;
 
-			while (genToUpdate < this.#catmullClarkGenerations.length) {
-				this.#catmullClarkGenerations[genToUpdate].updatePosition(this.#mesh);
+			while (genToUpdate < this.#generations.length) {
+				this.#generations[genToUpdate].updatePosition(this.#mesh);
 				
 				genToUpdate++;
-				if(this.#catmullClarkGenerations[genToUpdate]) {
-					this.#catmullClarkGenerations[genToUpdate].updateInitialPosition(this.#mesh)
+				if(this.#generations[genToUpdate]) {
+					this.#generations[genToUpdate].updateInitialPosition(this.#mesh)
 				}
 			}
 		}

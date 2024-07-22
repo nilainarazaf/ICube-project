@@ -2981,6 +2981,41 @@ class Quaternion {
 
 	}
 
+	/// new
+	
+	add ( q ) {
+
+		this._x += q.x;
+		this._y += q.y;
+		this._z += q.z;
+		this._w += q.w;
+
+		this._onChangeCallback();
+
+		return this;
+
+	}
+
+	multiplyScalar( s ) {
+
+		this._x *= s;
+		this._y *= s;
+		this._z *= s;
+		this._w *= s;
+
+
+		this._onChangeCallback();
+
+		return this;
+
+	}
+
+	vector() {
+
+		return new Vector3( this._x, this._y, this._z );
+		
+	}
+
 	multiplyQuaternions( a, b ) {
 
 		// from http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/code/index.htm

@@ -103,7 +103,7 @@ export default class Viewer {
 	// Update the renderer
 	updateMeshRenderer() {
 		if(this.#meshRenderer.edges.parent) this.#meshRenderer.edges.update();
-		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.update();
+		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.updatePos();
 		if(this.#meshRenderer.vertices.parent) this.#meshRenderer.vertices.update();
 	}
 
@@ -556,10 +556,6 @@ export default class Viewer {
 		
 		this.#selected.mesh.getMatrixAt(instanceId, dummy.matrix);
 		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-		
-		// // add for current mesh trasform
-		// const indexGeneration = this.#mesh.getAttribute(this.#mesh.vertex, "indexGeneration");
-		// let gen = indexGeneration[indexPos];
 		
 		const gen = this.#selected.gen;
 

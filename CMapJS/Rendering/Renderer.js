@@ -55,7 +55,6 @@ let RendererCellProto = {
 
 }
 
-
 function Renderer(cmap){
 	this.cells = [];
 	const position = cmap.getAttribute(cmap.vertex, "position");
@@ -68,12 +67,7 @@ function Renderer(cmap){
 				
 				const geometry = new THREE.SphereGeometry(1, 32, 32);	
 				
-				const material = params.material || new THREE.MeshLambertMaterial({
-					color:params.color || 0xBBBBBB,
-					side: params.side || THREE.FrontSide,
-					transparent: params.transparent || false,
-					opacity: params.opacity || 1
-				});
+				const material = params.material || new THREE.MeshLambertMaterial({});
 
 				/// to handle none contiguous embeddings
 				let maxId = -1;
@@ -132,10 +126,7 @@ function Renderer(cmap){
 
 				const geometry = new THREE.CylinderGeometry(0.0025, 0.0025, 1, 8);
 				const material = params.material || new THREE.MeshLambertMaterial({
-					color:params.color || 0xBBBBBB,
-					side: params.side || THREE.FrontSide,
-					transparent: params.transparent || false,
-					opacity: params.opacity || 1
+					// color: params.color || 0x000000,
 				});
 
 				this.mesh = new THREE.InstancedMesh(geometry, material, cmap.nbCells(edge));
@@ -443,3 +434,6 @@ export function GenRenderer(generation){
 
 	return vertices;
 }
+
+
+

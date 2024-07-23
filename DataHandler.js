@@ -14,20 +14,10 @@ export default class DataHandler {
 
 	loadMeshFromString ( meshString ) {
 		this.#mesh = loadCMap2( "off", meshString );
-		initDQ(this.#mesh);
 		console.log( meshString );
 	}
 
 	get mesh ( ) {
 		return this.#mesh;
 	} 
-}
-
-function initDQ(mesh){
-	const DQ = mesh.addAttribute(mesh.vertex, "DQ");
-	const position = mesh.getAttribute(mesh.vertex, "position");
-	position.forEach( (pos, id) => {
-		DQ[id] = DualQuaternion.setFromTranslation(pos);
-	});
-	console.log(DQ);
 }

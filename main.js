@@ -97,6 +97,12 @@ const guiParams = {
     },
     genOpacity: 1,
     genSize: 2.5,
+    translation: function(){
+        viewer.translationMode();
+    },
+    rotation: function(){
+        viewer.rotationMode();
+    },
 
 };
 
@@ -208,6 +214,10 @@ const genSettings = gui.addFolder('Generation Setting')
         viewer.setGenSize(size);
     });
 
+const transformControls = gui.addFolder('Control mode')
+    transformControls.add(guiParams, 'translation');
+    transformControls.add(guiParams, 'rotation');
+
 ///////////////////////////////////////////////
 // Handle file input change event
 document.getElementById('fileInput').addEventListener('change', function(event) {
@@ -244,33 +254,27 @@ function saveFile() {
 ///////////////////////////////////////////////
 // Apply function
 function applySubdivision(sub){
-    switch (sub) {
-        case 'CatmullClark':
-            applyCatmullClark();
-            break;
-
-        case 'CatmullClark-Inter':
-            // CatmullClark-Inter();
-            break;
-
-        case 'Butterfly':
-            // butterfly();
-            break;
-    
-        default:
-            break;
-    }
-}
-
-
-///////////////////////////////////////////////
-// Apply Catmull-Clark subdivision
-function applyCatmullClark() {
     if(dataHandler.mesh){
         const generations = viewer.getGenerations();
     
-        const gen = CatmullClark(dataHandler.mesh, generations);
+        let gen = [];
+        switch (sub) {
+            case 'CatmullClark':
+                gen = CatmullClark(dataHandler.mesh, generations);
+                break;
+
+            case 'CatmullClark-Inter':
+                catmullClark_inter(dataHandler.mesh);
+                break;
+
+            case 'Butterfly':
+                // butterfly();
+                break;
         
+            default:
+                break;
+        }
+        throw new Error();
         viewer.setGenerations(gen);
         
         guiParams.generationCount = gen.length-1;
@@ -279,7 +283,7 @@ function applyCatmullClark() {
         update();
     }
     render();
-};
+}
 
 
 ///////////////////////////////////////////////
@@ -350,6 +354,23 @@ mainloop();
 ////////////////////////////////////////////
 
 
+///////////////////////////////////////////////
+// Apply Catmull-Clark subdivision
+function applyCatmullClark() {
+    if(dataHandler.mesh){
+        const generations = viewer.getGenerations();
+    
+        const gen = CatmullClark(dataHandler.mesh, generations);
+        
+        viewer.setGenerations(gen);
+        
+        guiParams.generationCount = gen.length-1;
+        showGen.max(guiParams.generationCount - 1);
+        
+        update();
+    }
+    render();
+};
 
 
 

@@ -1,5 +1,6 @@
 import {cutAllEdges, quadrangulateAllFaces, quadrangulateFace} from '../../../Utils/Subdivision.js';
 import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
+import { DualQuaternion } from '../../../../DualQuaternion.js';
 
 export default function catmullClark(cmap, generations = []){
 	const genIndex = generations.length;
@@ -151,17 +152,24 @@ class GenCatmullClark {
         this.generationId = generation;
 
 		this.initialVertices = {...cmap.cache(cmap.vertex)};
-		let indexGeneration = [];
+		// let indexGeneration = [];
 		
 		if(generation == 0){
-			indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
+			// indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
+			const DQ = cmap.addAttribute(cmap.vertex, "DQ");
+			const position = cmap.getAttribute(cmap.vertex, "position");
+			position.forEach( (pos, id) => {
+				DQ[id] = DualQuaternion.setFromTranslation(pos);
+				DQ[id].normalize();
+			});
 		}
 
-		cmap.foreach(cmap.vertex, vd => {
-			indexGeneration[cmap.cell(cmap.vertex, vd)] = 0;
-		});
+		// cmap.foreach(cmap.vertex, vd => {
+		// 	indexGeneration[cmap.cell(cmap.vertex, vd)] = 0;
+		// });
 		
-		const position = cmap.getAttribute(cmap.vertex, "position");
+		// const position = cmap.getAttribute(cmap.vertex, "position");
+		const position = cmap.getAttribute(cmap.vertex, "DQ");
 		
 		this.initialPosition = []
 		this.transforms = []
@@ -169,20 +177,20 @@ class GenCatmullClark {
 		position.forEach( (pos, id) => {
 			this.initialPosition.push(pos.clone());
 			
-			this.transforms[id] = new Vector3(0,0,0)
+			this.transforms[id] = DualQuaternion.setFromTranslation(new Vector3(0,0,0));
 		} )
 
 		
 		this.vertices = {...cmap.cache(cmap.vertex)};
 		
-		cmap.foreach(cmap.vertex, vd => {
-			if(!(Object.values(this.initialVertices).includes(vd))){
-				indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
-			}
-		});
+		// cmap.foreach(cmap.vertex, vd => {
+		// 	if(!(Object.values(this.initialVertices).includes(vd))){
+		// 		indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
+		// 	}
+		// });
 
-		
-
+		console.log(this);
+		throw new Error();
 	}
 
 	buildNextGeneration(cmap){
@@ -191,11 +199,11 @@ class GenCatmullClark {
 		this.buildGeometry(cmap);
 		
 		const indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
-		cmap.foreach(cmap.vertex, vd => {
-			if(!(Object.values(this.initialVertices).includes(vd))){
-				indexGeneration[cmap.cell(cmap.vertex, vd)] = this.generationId + 1;
-			}
-		});
+		// cmap.foreach(cmap.vertex, vd => {
+		// 	if(!(Object.values(this.initialVertices).includes(vd))){
+		// 		indexGeneration[cmap.cell(cmap.vertex, vd)] = this.generationId + 1;
+		// 	}
+		// });
 
 	}
 
@@ -328,45 +336,46 @@ class GenCatmullClark {
 	buildGeometry(cmap){
 		const vertex = cmap.vertex;
 
-		const position = cmap.getAttribute(vertex, "position");
+		const position = cmap.getAttribute(vertex, "DQ");
 
 		const nextGenPosition = {} 
 
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			nextGenPosition[vid] = new Vector3();
+			nextGenPosition[vid] = DualQuaternion.setFromTranslation(new Vector3(0,0,0));
 		});
 		
 		for(const [idNewPos, influate] of Object.entries(this.weights)) {
 			for(const [idOldPos, w] of Object.entries(influate)) {
-				nextGenPosition[idNewPos].addScaledVector(position[idOldPos], w);
+				nextGenPosition[idNewPos].addScaledDualQuaternion(position[idOldPos], w);
+				nextGenPosition[idNewPos].normalize();
 			}
 		}
 
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			position[vid] ??= new Vector3();
+			position[vid] ??= DualQuaternion.setFromTranslation(new Vector3(0,0,0));
 			position[vid].copy(nextGenPosition[vid]);
 		});
 
+		// this.updateVecPosition(cmap);
 	}
 
 	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
-		this.transforms[positionIndex] = transformVector;
+		this.transforms[positionIndex] = DualQuaternion.setFromTranslation(transformVector);
 	}
 
 	// Update position with transforms
-	updatePosition(cmap, current = false){
+	updatePosition(cmap){
 
-		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
+		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 
-		for(const [id, transform] of Object.entries(this.transforms)) {
-				
-			if(this.toTransform) {
-				currentPosition[id].copy(this.initialPosition[id]);
-				currentPosition[id].add(transform);
-			}
+		if(this.toTransform) {
+			const newPosition = this.applyTransforms();
+			newPosition.forEach( (pos, id) => {
+				currentPosition[id].copy(pos);
+			});
 		}
 
 		if(this.weights) {
@@ -380,21 +389,46 @@ class GenCatmullClark {
 	// When a generation befor this is currently setting, 
 	// Initial positions of this generation must be set with its transforms
 	updateInitialPosition(cmap){
-		const currentPosition = cmap.getAttribute(cmap.vertex, "position");
+		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		this.initialPosition.forEach( (pos, id) => {
 			pos.copy(currentPosition[id]);
-			currentPosition[id].add(this.transforms[id].clone());
+			currentPosition[id].copy(this.transforms[id].transform(pos.clone()));
 		} )
 	}
 
 	// Give current position of this generation with its transforms
-	currentPosition(){
+	applyTransforms(){
 		const currentPosition = []
 		this.initialPosition.forEach( (pos, id) => {
-			const sum = pos.clone();
-			sum.add(this.transforms[id].clone());
-			currentPosition.push(sum);
+			const newPos = pos.clone();
+			newPos.multiply(this.transforms[id]);
+			currentPosition.push(newPos);
 		} )
 		return currentPosition;
+	}
+
+	getVectorPosittion(cmap){
+		const position = []
+		const pos = this.applyTransforms();
+		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
+		const vec = new Vector3();
+		currentPosition.forEach( (pos, id) => {
+			position[id].push((pos.transform(vec)).copy());
+		} );
+		return position;
+	}
+
+	updateVecPosition(cmap){
+		const DQPosition = cmap.getAttribute(cmap.vertex, "DQ");
+		const position = cmap.getAttribute(cmap.vertex, "position");
+		const vec = new Vector3();
+		DQPosition.forEach( (dq, id) => {
+			position[id].copy((dq.transform(vec)).copy());
+		} );
+	}
+
+
+	currentPosition(){
+		return this.getVectorPosittion();
 	}
 }

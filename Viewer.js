@@ -103,7 +103,7 @@ export default class Viewer {
 	// Update the renderer
 	updateMeshRenderer() {
 		if(this.#meshRenderer.edges.parent) this.#meshRenderer.edges.update();
-		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.updatePos();
+		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.update();
 		if(this.#meshRenderer.vertices.parent) this.#meshRenderer.vertices.update();
 	}
 

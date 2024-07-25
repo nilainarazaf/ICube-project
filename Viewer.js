@@ -4,6 +4,7 @@ import Renderer from './CMapJS/Rendering/Renderer.js';
 import {GenRenderer} from './CMapJS/Rendering/Renderer.js';
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
 import { TransformControls } from './CMapJS/Libs/TransformControls.js';
+import { DualQuaternion } from './DualQuaternion.js';
 
 export default class Viewer {
 	#renderer; // WebGL renderer
@@ -531,7 +532,7 @@ export default class Viewer {
 					gen : gen,
 				};
 
-				this.selectInstance(instanceId);
+				this.selectInstanceTranslation(instanceId);
 				
 			}
 		} else if(intersects[ 0 ]) {
@@ -547,7 +548,40 @@ export default class Viewer {
 	}
 	
 	// Selecte one specific instance of the selected mesh
-	selectInstance(instanceId) {
+	selectInstanceTranslation(instanceId) {
+		const indexPos = instanceId;
+
+		const dummy = new THREE.Object3D();
+		this.#selected.dummy = dummy;
+		this.#scene.add(dummy);
+		
+		this.#selected.mesh.getMatrixAt(instanceId, dummy.matrix);
+		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+		
+		const gen = this.#selected.gen;
+
+		const pos0 = this.#generations[gen].initialPosition[indexPos];
+		
+		this.#transformControls.attach(dummy);
+
+		this.#transformControls.addEventListener('objectChange', () => {
+			const pos = dummy.position.clone();
+			pos.sub(pos0.clone());
+			this.changeVertexPosition(DualQuaternion.setFromTranslation((pos.clone())));
+
+			this.updateMeshRenderer();
+			this.updateGenRenderer();
+		});
+
+		this.#transformControls.addEventListener('mouseDown', () => {
+			this.#orbitControls.enabled = false;
+			this.#transformControls.addEventListener('mouseUp', () => {
+				this.#orbitControls.enabled = true;
+			})
+		});
+	}
+
+	selectInstanceRotation(instanceId) {
 		const indexPos = instanceId;
 
 		const dummy = new THREE.Object3D();
@@ -577,7 +611,7 @@ export default class Viewer {
 			this.#transformControls.addEventListener('mouseUp', () => {
 				this.#orbitControls.enabled = true;
 			})
-		})
+		});
 	}
 
 	// Clear the scene from interactions (transforms, normals, etc)
@@ -592,7 +626,16 @@ export default class Viewer {
 		this.showVertexNormals(false);
 	}
 
-
+	translationMode(){
+		const tmp = this.#selected;
+		this.clearScene();
+		this.#selected = tmp;
+	}
+	rotationMode(){
+		const tmp = this.#selected;
+		this.clearScene();
+		this.#selected = tmp;
+	}
 
 
 

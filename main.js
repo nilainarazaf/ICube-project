@@ -214,7 +214,8 @@ const genSettings = gui.addFolder('Generation Setting')
         viewer.setGenSize(size);
     });
 
-const transformControls = gui.addFolder('Control mode')
+const transformControls = gui.addFolder('Control mode');
+    transformControls.close();
     transformControls.add(guiParams, 'translation');
     transformControls.add(guiParams, 'rotation');
 
@@ -261,6 +262,9 @@ function applySubdivision(sub){
         switch (sub) {
             case 'CatmullClark':
                 gen = CatmullClark(dataHandler.mesh, generations);
+                const position = dataHandler.mesh.getAttribute(dataHandler.mesh.vertex, "DQ");
+                console.log(position);
+                // throw new Error();
                 break;
 
             case 'CatmullClark-Inter':
@@ -274,7 +278,7 @@ function applySubdivision(sub){
             default:
                 break;
         }
-        throw new Error();
+        // throw new Error();
         viewer.setGenerations(gen);
         
         guiParams.generationCount = gen.length-1;

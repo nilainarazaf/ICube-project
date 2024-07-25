@@ -1,5 +1,5 @@
 import {cutAllEdges, quadrangulateAllFaces, quadrangulateFace} from '../../../Utils/Subdivision.js';
-import {TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
+import {Quaternion, TetrahedronGeometry, Vector3} from '../../../Libs/three.module.js';
 import { DualQuaternion } from '../../../../DualQuaternion.js';
 
 export default function catmullClark(cmap, generations = []){
@@ -160,7 +160,8 @@ class GenCatmullClark {
 			const position = cmap.getAttribute(cmap.vertex, "position");
 			position.forEach( (pos, id) => {
 				DQ[id] = DualQuaternion.setFromTranslation(pos);
-				DQ[id].normalize();
+				// DQ[id].normalize();
+				console.log(pos, DQ[id]);
 			});
 		}
 
@@ -178,6 +179,7 @@ class GenCatmullClark {
 			this.initialPosition.push(pos.clone());
 			
 			this.transforms[id] = DualQuaternion.setFromTranslation(new Vector3(0,0,0));
+			this.transforms[id].normalize()
 		} )
 
 		
@@ -189,8 +191,10 @@ class GenCatmullClark {
 		// 	}
 		// });
 
-		console.log(this);
-		throw new Error();
+		// if(generation == 1){
+		// console.log(this);
+		// throw new Error();
+		// }
 	}
 
 	buildNextGeneration(cmap){
@@ -342,28 +346,29 @@ class GenCatmullClark {
 
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			nextGenPosition[vid] = DualQuaternion.setFromTranslation(new Vector3(0,0,0));
+			nextGenPosition[vid] = new DualQuaternion(new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0))
 		});
 		
 		for(const [idNewPos, influate] of Object.entries(this.weights)) {
 			for(const [idOldPos, w] of Object.entries(influate)) {
-				nextGenPosition[idNewPos].addScaledDualQuaternion(position[idOldPos], w);
-				nextGenPosition[idNewPos].normalize();
+				nextGenPosition[idNewPos].addScaledDualQuaternion(position[idOldPos], w)
 			}
+			nextGenPosition[idNewPos].normalize();
 		}
 
 		cmap.foreach(vertex, vd => {
 			const vid = cmap.cell(vertex, vd);
-			position[vid] ??= DualQuaternion.setFromTranslation(new Vector3(0,0,0));
+			position[vid] ??= new DualQuaternion(new Quaternion(0, 0, 0, 0), new Quaternion(0, 0, 0, 0))
 			position[vid].copy(nextGenPosition[vid]);
 		});
 
-		// this.updateVecPosition(cmap);
+		this.updateVecPosition(cmap);
 	}
 
 	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex] = DualQuaternion.setFromTranslation(transformVector);
+		this.transforms[positionIndex].normalize();
 	}
 
 	// Update position with transforms
@@ -375,6 +380,7 @@ class GenCatmullClark {
 			const newPosition = this.applyTransforms();
 			newPosition.forEach( (pos, id) => {
 				currentPosition[id].copy(pos);
+				currentPosition[id].normalize();
 			});
 		}
 
@@ -392,7 +398,9 @@ class GenCatmullClark {
 		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		this.initialPosition.forEach( (pos, id) => {
 			pos.copy(currentPosition[id]);
-			currentPosition[id].copy(this.transforms[id].transform(pos.clone()));
+			pos.normalize();
+			currentPosition[id].copy(this.transforms[id].transform());
+			currentPosition[id].normalize();
 		} )
 	}
 
@@ -407,13 +415,12 @@ class GenCatmullClark {
 		return currentPosition;
 	}
 
-	getVectorPosittion(cmap){
+	getVectorPosittion(){
 		const position = []
-		const pos = this.applyTransforms();
-		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
-		const vec = new Vector3();
-		currentPosition.forEach( (pos, id) => {
-			position[id].push((pos.transform(vec)).copy());
+		this.initialPosition.forEach( (pos, id) => {
+			const tmp = pos.clone()
+			tmp.multiply(this.transforms[id]);
+			position.push((tmp.transform(new Vector3())));
 		} );
 		return position;
 	}
@@ -421,9 +428,12 @@ class GenCatmullClark {
 	updateVecPosition(cmap){
 		const DQPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		const position = cmap.getAttribute(cmap.vertex, "position");
-		const vec = new Vector3();
+
 		DQPosition.forEach( (dq, id) => {
-			position[id].copy((dq.transform(vec)).copy());
+			position[id] ??= new Vector3();
+			const tmp = dq.clone();
+			// tmp.multiply(this.transforms[id]);
+			position[id].copy(tmp.transform(new Vector3()));
 		} );
 	}
 

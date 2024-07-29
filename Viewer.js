@@ -435,7 +435,7 @@ export default class Viewer {
 	}
 
 	// Update renderer of generation
-	updateGenRenderer(params = undefined){
+	updateGenRenderer(){
 		this.#genRenderer.forEach( gen => {
 			gen.update();
 		});
@@ -518,13 +518,14 @@ export default class Viewer {
 
 		const intersects = this.#raycaster.intersectObjects(this.#scene.children, false);
 				
-		if((intersects[ 0 ]?.object?.genIndex != undefined) && intersects.length > 0){
+		if(((intersects[ 0 ]?.object?.genIndex != undefined) && intersects.length > 0) || (this.#selected?.orientation == intersects[ 0 ]?.object)){
 			const instanceId = intersects[ 0 ]?.instanceId;
 			const gen = intersects[ 0 ]?.object.genIndex;
 			
 			if ( ((gen != this.#selected?.genIndex) && (this.#selected?.mesh.uuid != intersects[ 0 ]?.object.uuid))
 				|| (this.#selected?.id != instanceId) ) {
-
+				
+				if ( this.#selected ) this.clearScene();
 				if ( this.#selected ) this.#selected.mesh.setColorAt( instanceId, this.#intersected.color );
 				this.#selected = {
 					mesh : intersects[ 0 ].object,
@@ -532,7 +533,7 @@ export default class Viewer {
 					gen : gen,
 				};
 
-				this.selectInstanceTranslation(instanceId);
+				this.selectInstance(instanceId);
 				
 			}
 		} else if(intersects[ 0 ]) {
@@ -548,7 +549,7 @@ export default class Viewer {
 	}
 	
 	// Selecte one specific instance of the selected mesh
-	selectInstanceTranslation(instanceId) {
+	selectInstance(instanceId) {
 		const indexPos = instanceId;
 
 		const dummy = new THREE.Object3D();
@@ -560,47 +561,26 @@ export default class Viewer {
 		
 		const gen = this.#selected.gen;
 
-		const pos0 = this.#generations[gen].initialPosition[indexPos];
+		const pos0 = this.#generations[gen].initialPosition[indexPos].clone();
 		
+		this.#transformControls.setMode('rotate');
 		this.#transformControls.attach(dummy);
 
 		this.#transformControls.addEventListener('objectChange', () => {
 			const pos = dummy.position.clone();
-			pos.sub(pos0.clone());
-			this.changeVertexPosition(DualQuaternion.setFromTranslation((pos.clone())));
+			const rot = dummy.quaternion.clone();
 
-			this.updateMeshRenderer();
-			this.updateGenRenderer();
-		});
+			let dq;
+			let transform;
 
-		this.#transformControls.addEventListener('mouseDown', () => {
-			this.#orbitControls.enabled = false;
-			this.#transformControls.addEventListener('mouseUp', () => {
-				this.#orbitControls.enabled = true;
-			})
-		});
-	}
+			this.showOrientation();
+			if(this.#selected.orientation) {
+				this.#selected.orientation.setRotationFromQuaternion(rot);
+			}
+			dq = DualQuaternion.setFromRotationTranslation(rot, pos);
 
-	selectInstanceRotation(instanceId) {
-		const indexPos = instanceId;
-
-		const dummy = new THREE.Object3D();
-		this.#selected.dummy = dummy;
-		this.#scene.add(dummy);
-		
-		this.#selected.mesh.getMatrixAt(instanceId, dummy.matrix);
-		dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-		
-		const gen = this.#selected.gen;
-
-		const pos0 = this.#generations[gen].initialPosition[indexPos];
-		
-		this.#transformControls.attach(dummy);
-
-		this.#transformControls.addEventListener('objectChange', () => {
-			const pos = dummy.position.clone();
-			pos.sub(pos0.clone());
-			this.changeVertexPosition(pos.clone());
+			transform = pos0.clone().invert().premultiply(dq);
+			this.changeVertexPosition(transform);
 
 			this.updateMeshRenderer();
 			this.updateGenRenderer();
@@ -620,6 +600,8 @@ export default class Viewer {
 			this.#transformControls.detach();
 			this.#scene.remove(this.#selected.dummy);
 			this.#selected.dummy = undefined;
+			this.#scene.remove(this.#selected.orientation);
+			this.#selected.orientation = undefined;
 			this.#selected = undefined;
 		}
 		this.showFaceNormals(false);
@@ -630,13 +612,38 @@ export default class Viewer {
 		const tmp = this.#selected;
 		this.clearScene();
 		this.#selected = tmp;
+		this.selectInstance(this.#selected.id)
+		this.#transformControls.setMode('translate');
 	}
 	rotationMode(){
 		const tmp = this.#selected;
 		this.clearScene();
 		this.#selected = tmp;
+		console.log(this.#selected, tmp)
+		this.selectInstance(this.#selected.id)
+		this.#transformControls.setMode('rotate');
 	}
 
+	showOrientation(){
+
+		if(this.#selected.orientation){
+			this.#scene.remove(this.#selected.orientation);
+		}
+			// Création d'un cône pour représenter l'orientation
+			const coneGeometry = new THREE.ConeGeometry(0.05, 0.7, 32);
+			const coneMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+			const orientationCone = new THREE.Mesh(coneGeometry, coneMaterial);
+
+			const pos = this.#generations[this.#selected.gen].getVectorPosittion();
+			// Positionner le cône (optionnel)
+			orientationCone.position.copy(pos[this.#selected.id]);
+
+
+			// Ajouter le cône à la scène
+			this.#scene.add(orientationCone);
+			this.#selected.orientation = orientationCone;
+
+	}
 
 
 
@@ -649,7 +656,7 @@ export default class Viewer {
 	// TRANSFORM
 
 	// transform selected vertex
-	changeVertexPosition(transformVector){
+	changeVertexPosition(transform){
 
 		const positionIndex = this.#selected.id;
 		
@@ -657,7 +664,7 @@ export default class Viewer {
 
 		if(this.#generations.length >= 0 && genToUpdate <= this.#generations.length){
 			
-			this.#generations[genToUpdate].addTransform(positionIndex, transformVector);
+			this.#generations[genToUpdate].addTransform(positionIndex, transform);
 			this.#generations[genToUpdate].toTransform = true;
 
 			while (genToUpdate < this.#generations.length) {

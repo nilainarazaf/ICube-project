@@ -263,7 +263,7 @@ function applySubdivision(sub){
             case 'CatmullClark':
                 gen = CatmullClark(dataHandler.mesh, generations);
                 const position = dataHandler.mesh.getAttribute(dataHandler.mesh.vertex, "DQ");
-                console.log(position);
+                // console.log(position);
                 // throw new Error();
                 break;
 

@@ -161,7 +161,7 @@ class GenCatmullClark {
 			position.forEach( (pos, id) => {
 				DQ[id] = DualQuaternion.setFromTranslation(pos);
 				// DQ[id].normalize();
-				console.log(pos, DQ[id]);
+				// console.log(pos, DQ[id]);
 			});
 		}
 
@@ -367,8 +367,7 @@ class GenCatmullClark {
 
 	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
-		this.transforms[positionIndex] = DualQuaternion.setFromTranslation(transformVector);
-		this.transforms[positionIndex].normalize();
+		this.transforms[positionIndex] = transformVector;
 	}
 
 	// Update position with transforms
@@ -380,7 +379,6 @@ class GenCatmullClark {
 			const newPosition = this.applyTransforms();
 			newPosition.forEach( (pos, id) => {
 				currentPosition[id].copy(pos);
-				currentPosition[id].normalize();
 			});
 		}
 
@@ -398,8 +396,7 @@ class GenCatmullClark {
 		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		this.initialPosition.forEach( (pos, id) => {
 			pos.copy(currentPosition[id]);
-			pos.normalize();
-			currentPosition[id].copy(this.transforms[id].transform());
+			currentPosition[id].multiply(this.transforms[id]);
 			currentPosition[id].normalize();
 		} )
 	}
@@ -431,9 +428,7 @@ class GenCatmullClark {
 
 		DQPosition.forEach( (dq, id) => {
 			position[id] ??= new Vector3();
-			const tmp = dq.clone();
-			// tmp.multiply(this.transforms[id]);
-			position[id].copy(tmp.transform(new Vector3()));
+			position[id].copy(dq.clone().transform(new Vector3()));
 		} );
 	}
 

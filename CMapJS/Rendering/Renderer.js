@@ -1,3 +1,4 @@
+import { DualQuaternion } from '../../DualQuaternion.js';
 import * as THREE from '../Libs/three.module.js'
 
 let RendererCellProto = {
@@ -382,9 +383,13 @@ export function GenRenderer(generation){
 	const vertices = (generation == undefined) ? undefined :
 	Object.assign(Object.create(RendererCellProto), {
 		create: function(params = {}){
-				const position = generation.currentPosition();
+				const position = generation.applyTransforms();
+
+
 				this.params = params;
-				const geometry = new THREE.SphereGeometry(0.01, 32, 32);
+
+				let geometry = new THREE.SphereGeometry(0.01, 32, 32);
+				if(params.mode == "rotate") geometry = new THREE.ConeGeometry(0.01, 0.05, 32);
 
 				const color = params.color || new THREE.Color(0xff0000);
 				if(params.color == undefined){
@@ -405,14 +410,22 @@ export function GenRenderer(generation){
 				const matrix = new THREE.Matrix4();
 				
 				const size = params.size || 2.5;
-				position.forEach( (pos, id) => {
-		
+				position.forEach( (dq, id) => {
+					
+					const pos = dq.transform(new THREE.Vector3());
 					matrix.makeTranslation(pos.x, pos.y, pos.z);
 					
 					const scaleMatrix = new THREE.Matrix4().makeScale(size, size, size);
 					matrix.multiply(scaleMatrix);
+					// instancedMesh.setMatrixAt(id, matrix);
+					
+					const mat = new THREE.Matrix4();
+					mat.makeRotationFromQuaternion(dq.getRotation());
+					matrix.multiply(mat);
+
 					instancedMesh.setMatrixAt(id, matrix);
 					
+					console.log(matrix);
 					
 					instancedMesh.setColorAt(id, color);
 		

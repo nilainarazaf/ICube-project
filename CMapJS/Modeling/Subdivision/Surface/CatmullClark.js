@@ -367,7 +367,7 @@ class GenCatmullClark {
 
 	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
-		this.transforms[positionIndex] = transformVector;
+		this.transforms[positionIndex].multiply(transformVector);
 	}
 
 	// Update position with transforms

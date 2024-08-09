@@ -262,9 +262,6 @@ function applySubdivision(sub){
         switch (sub) {
             case 'CatmullClark':
                 gen = CatmullClark(dataHandler.mesh, generations);
-                const position = dataHandler.mesh.getAttribute(dataHandler.mesh.vertex, "DQ");
-                // console.log(position);
-                // throw new Error();
                 break;
 
             case 'CatmullClark-Inter':
@@ -278,7 +275,6 @@ function applySubdivision(sub){
             default:
                 break;
         }
-        // throw new Error();
         viewer.setGenerations(gen);
         
         guiParams.generationCount = gen.length-1;
@@ -294,7 +290,8 @@ function applySubdivision(sub){
 // Update function
 function update() {
     viewer.updateMeshRenderer();
-    viewer.updateGenRenderer();    
+    viewer.updateGenRenderer();
+    // viewer.updateNormals();
     viewer.clearScene();
     guiParams.facesNormals = false;
     guiParams.verticesNormals = false;

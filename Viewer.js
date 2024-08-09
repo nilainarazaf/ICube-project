@@ -20,8 +20,8 @@ export default class Viewer {
 	#mesh; // The mesh object
 	#meshRenderer; // Renderer for the mesh
 
-	#faceNormals; // Array to store face normals
-	#vertexNormals; // Array to store vertex normals
+	#faceNormals = []; // Array to store face normals
+	#vertexNormals = []; // Array to store vertex normals
 
 	#intersected; // Variable to store the intersected object
 	#selected; // Variable to store the selected object
@@ -41,7 +41,7 @@ export default class Viewer {
 
 		// Set up the scene
 		this.#scene = new THREE.Scene();
-		this.#scene.background = new THREE.Color(0x444444);
+		this.#scene.background = new THREE.Color(0xaaaaaa);
 
 		// Add ambient light to the scene
 		const ambientLight = new THREE.AmbientLight(0xAAAAaa, 0.5);
@@ -106,6 +106,9 @@ export default class Viewer {
 		if(this.#meshRenderer.edges.parent) this.#meshRenderer.edges.update();
 		if(this.#meshRenderer.faces.parent) this.#meshRenderer.faces.update();
 		if(this.#meshRenderer.vertices.parent) this.#meshRenderer.vertices.update();
+
+		// Normals
+		this.updateNormals();
 	}
 
 	// Remove all from the scene
@@ -175,7 +178,6 @@ export default class Viewer {
 	showFaceNormals(display) {
 		if(display){
 			if (this.#meshRenderer.faces.mesh) {
-				this.#faceNormals = [];
 				const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 
 				this.#mesh.foreach(this.#mesh.face, vd => {
@@ -226,8 +228,8 @@ export default class Viewer {
 			}
 		} else {
 			if (this.#faceNormals) {
-				this.#faceNormals.forEach(helper => {
-					this.#scene.remove(helper);
+				this.#faceNormals.forEach(normal => {
+					this.#scene.remove(normal);
 				});
 				this.#faceNormals = [];
 			}
@@ -345,7 +347,6 @@ export default class Viewer {
 	showVertexNormals(display = true) {
 		if(display) {
 			if (this.#meshRenderer.vertices.mesh) {
-				this.#vertexNormals = []
 				const position = this.#mesh.getAttribute(this.#mesh.vertex, "position");
 
 				this.#mesh.foreach(this.#mesh.vertex, vd => {
@@ -364,9 +365,17 @@ export default class Viewer {
 
 					} while (d0 != vd);
 					
-					const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[1]);
-					const AC = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
-					const normal = new THREE.Vector3().crossVectors(AB, AC).normalize();
+					const normal = new THREE.Vector3();
+
+					if(neighboringVertices.length == 3){
+						const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[1]);
+						const AC = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
+						normal.copy(new THREE.Vector3().crossVectors(AB, AC).normalize());
+					} else if(neighboringVertices.length == 4){
+						const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
+						const CD = new THREE.Vector3().subVectors(neighboringVertices[1], neighboringVertices[3]);
+						normal.copy(new THREE.Vector3().crossVectors(AB, CD).normalize());
+					}
 					
 
 					/////////////////////////////////////
@@ -381,13 +390,24 @@ export default class Viewer {
 			}
 		} else {
 			if (this.#vertexNormals) {
-				this.#vertexNormals.forEach(helper => {
-					this.#scene.remove(helper);
+				this.#vertexNormals.forEach(normal => {
+					this.#scene.remove(normal);
 				});
 				this.#vertexNormals = [];
 			}
 		}
 		this.render();
+	}
+
+	updateNormals(){
+		if (this.#faceNormals.length != 0) {
+			this.showFaceNormals(false);
+			this.showFaceNormals(true);
+		}
+		if (this.#vertexNormals.length != 0) {
+			this.showVertexNormals(false);
+			this.showVertexNormals(true);
+		}
 	}
 
 
@@ -412,10 +432,10 @@ export default class Viewer {
 						&& this.#generations[id]
 						&& (!this.#genRenderer || !this.#genRenderer[id])) {
 
-					// const position = .currentPosition();
 					this.#genRenderer[id] = GenRenderer(this.#generations[id]);
 
-					this.#genRenderer[id].create({genIndex:id, mode:"rotate"});
+					console.log(this.#transformControls.mode)
+					this.#genRenderer[id].create({genIndex:id, mode: this.#transformControls.mode});
 
 					this.#genRenderer[id].addTo(this.#scene);
 					
@@ -563,23 +583,25 @@ export default class Viewer {
 
 		const pos0 = this.#generations[gen].initialPosition[indexPos].clone();
 		
-		this.#transformControls.setMode('translate'); // default
 		this.#transformControls.attach(dummy);
 		
 		this.#transformControls.addEventListener('objectChange', () => {
-			const tra0 = this.#generations[gen].transforms[indexPos].clone();
+			const trans0 = this.#generations[gen].transforms[indexPos].clone();
 			
-			console.log(pos0, tra0);
-			const dq = pos0.clone().multiply(tra0);
-			dq.normalize();
+			const dqI = pos0.clone().multiply(trans0);
+			dqI.normalize();
 			
-			const pos = new THREE.Quaternion(dummy.position.x, dummy.position.y, dummy.position.z)
-			const dqt = DualQuaternion.setFromTranslationRotation(dummy.quaternion.clone(), pos)
+			const pos = new THREE.Quaternion(dummy.position.x, dummy.position.y, dummy.position.z, 0);
+			const rot = new THREE.Quaternion();
+				rot.setFromEuler(dummy.rotation);
 
-			let transform = dq.clone().invert().premultiply(dqt);
-			// if(this.#transformControls.mode == "rotate") transform = DualQuaternion.setFromRotation(transform.getRotation());
+			const dqT = DualQuaternion.setFromTranslationRotation(rot.clone(), pos.clone());
+			dqT.normalize();
 
-			this.changeVertexPosition(transform);
+			let transform = dqI.clone().invert().multiply(dqT);
+			transform.normalize();
+
+			this.changeVertexPosition(transform.clone());
 
 			this.updateMeshRenderer();
 			this.updateGenRenderer();
@@ -603,15 +625,21 @@ export default class Viewer {
 			this.#selected.orientation = undefined;
 			this.#selected = undefined;
 		}
-		this.showFaceNormals(false);
-		this.showVertexNormals(false);
 	}
 
 	translationMode(){
 		this.#transformControls.setMode('translate');
+		this.#genRenderer.forEach( gen => {
+			gen.params.mode = 'translate';
+		});
+		this.updateGenRenderer();
 	}
 	rotationMode(){
 		this.#transformControls.setMode('rotate');
+		this.#genRenderer.forEach( gen => {
+			gen.params.mode = 'rotate';
+		});
+		this.updateGenRenderer();
 	}
 
 

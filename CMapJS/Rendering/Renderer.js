@@ -385,7 +385,6 @@ export function GenRenderer(generation){
 		create: function(params = {}){
 				const position = generation.applyTransforms();
 
-
 				this.params = params;
 
 				let geometry = new THREE.SphereGeometry(0.01, 32, 32);
@@ -417,15 +416,12 @@ export function GenRenderer(generation){
 					
 					const scaleMatrix = new THREE.Matrix4().makeScale(size, size, size);
 					matrix.multiply(scaleMatrix);
-					// instancedMesh.setMatrixAt(id, matrix);
 					
-					const mat = new THREE.Matrix4();
-					mat.makeRotationFromQuaternion(dq.getRotation());
-					matrix.multiply(mat);
+					const rotationMatrix = new THREE.Matrix4();
+					rotationMatrix.makeRotationFromQuaternion(dq.getRotation());
+					matrix.multiply(rotationMatrix);
 
 					instancedMesh.setMatrixAt(id, matrix);
-					
-					console.log(matrix);
 					
 					instancedMesh.setColorAt(id, color);
 		

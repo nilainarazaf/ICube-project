@@ -152,24 +152,16 @@ class GenCatmullClark {
         this.generationId = generation;
 
 		this.initialVertices = {...cmap.cache(cmap.vertex)};
-		// let indexGeneration = [];
 		
 		if(generation == 0){
-			// indexGeneration = cmap.addAttribute(cmap.vertex, "indexGeneration");
 			const DQ = cmap.addAttribute(cmap.vertex, "DQ");
 			const position = cmap.getAttribute(cmap.vertex, "position");
 			position.forEach( (pos, id) => {
 				DQ[id] = DualQuaternion.setFromTranslation(pos);
-				// DQ[id].normalize();
-				// console.log(pos, DQ[id]);
+				DQ[id].normalize();
 			});
 		}
 
-		// cmap.foreach(cmap.vertex, vd => {
-		// 	indexGeneration[cmap.cell(cmap.vertex, vd)] = 0;
-		// });
-		
-		// const position = cmap.getAttribute(cmap.vertex, "position");
 		const position = cmap.getAttribute(cmap.vertex, "DQ");
 		
 		this.initialPosition = []
@@ -184,31 +176,11 @@ class GenCatmullClark {
 
 		
 		this.vertices = {...cmap.cache(cmap.vertex)};
-		
-		// cmap.foreach(cmap.vertex, vd => {
-		// 	if(!(Object.values(this.initialVertices).includes(vd))){
-		// 		indexGeneration[cmap.cell(cmap.vertex, vd)] = generation;
-		// 	}
-		// });
-
-		// if(generation == 1){
-		// console.log(this);
-		// throw new Error();
-		// }
 	}
 
 	buildNextGeneration(cmap){
 		this.buildTopology(cmap);
-			
 		this.buildGeometry(cmap);
-		
-		const indexGeneration = cmap.getAttribute(cmap.vertex, "indexGeneration");
-		// cmap.foreach(cmap.vertex, vd => {
-		// 	if(!(Object.values(this.initialVertices).includes(vd))){
-		// 		indexGeneration[cmap.cell(cmap.vertex, vd)] = this.generationId + 1;
-		// 	}
-		// });
-
 	}
 
 
@@ -362,12 +334,13 @@ class GenCatmullClark {
 			position[vid].copy(nextGenPosition[vid]);
 		});
 
-		this.updateVecPosition(cmap);
+		this.updateVectorPosition(cmap);
 	}
 
 	// Add transform to the generation buffer
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex].multiply(transformVector);
+		this.transforms[positionIndex].normalize();
 	}
 
 	// Update position with transforms
@@ -407,22 +380,13 @@ class GenCatmullClark {
 		this.initialPosition.forEach( (pos, id) => {
 			const newPos = pos.clone();
 			newPos.multiply(this.transforms[id]);
+			newPos.normalize();
 			currentPosition.push(newPos);
 		} )
 		return currentPosition;
 	}
 
-	getVectorPosittion(){
-		const position = []
-		this.initialPosition.forEach( (pos, id) => {
-			const tmp = pos.clone()
-			tmp.multiply(this.transforms[id]);
-			position.push((tmp.transform(new Vector3())));
-		} );
-		return position;
-	}
-
-	updateVecPosition(cmap){
+	updateVectorPosition(cmap){
 		const DQPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		const position = cmap.getAttribute(cmap.vertex, "position");
 
@@ -432,8 +396,4 @@ class GenCatmullClark {
 		} );
 	}
 
-
-	currentPosition(){
-		return this.getVectorPosittion();
-	}
 }

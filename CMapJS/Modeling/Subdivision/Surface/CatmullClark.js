@@ -171,7 +171,8 @@ class GenCatmullClark {
 			this.initialPosition.push(pos.clone());
 			
 			this.transforms[id] = DualQuaternion.setFromTranslation(new Vector3(0,0,0));
-			this.transforms[id].normalize()
+			this.transforms[id].normalize();
+			this.transforms[id].toAdd = false;
 		} )
 
 		
@@ -341,6 +342,7 @@ class GenCatmullClark {
 	addTransform(positionIndex, transformVector){
 		this.transforms[positionIndex].multiply(transformVector);
 		this.transforms[positionIndex].normalize();
+		this.transforms[positionIndex].toAdd = true;
 	}
 
 	// Update position with transforms
@@ -349,10 +351,7 @@ class GenCatmullClark {
 		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 
 		if(this.toTransform) {
-			const newPosition = this.applyTransforms();
-			newPosition.forEach( (pos, id) => {
-				currentPosition[id].copy(pos);
-			});
+			this.applyTransforms(currentPosition);
 		}
 
 		if(this.weights) {
@@ -369,21 +368,22 @@ class GenCatmullClark {
 		const currentPosition = cmap.getAttribute(cmap.vertex, "DQ");
 		this.initialPosition.forEach( (pos, id) => {
 			pos.copy(currentPosition[id]);
-			currentPosition[id].multiply(this.transforms[id]);
-			currentPosition[id].normalize();
+			if(this.transforms[id].toAdd){
+				currentPosition[id].multiply(this.transforms[id]);
+				currentPosition[id].normalize();
+			}
 		} )
 	}
 
-	// Give current position of this generation with its transforms
-	applyTransforms(){
-		const currentPosition = []
+	// apply transformation straightly on the argument as initial position with its transfom
+	applyTransforms(currentPosition){
 		this.initialPosition.forEach( (pos, id) => {
 			const newPos = pos.clone();
 			newPos.multiply(this.transforms[id]);
 			newPos.normalize();
-			currentPosition.push(newPos);
+			currentPosition[id] ??= DualQuaternion.setFromTranslation(new Vector3(0,0,0));
+			currentPosition[id].copy(newPos);
 		} )
-		return currentPosition;
 	}
 
 	updateVectorPosition(cmap){

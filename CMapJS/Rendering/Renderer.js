@@ -383,7 +383,8 @@ export function GenRenderer(generation){
 	const vertices = (generation == undefined) ? undefined :
 	Object.assign(Object.create(RendererCellProto), {
 		create: function(params = {}){
-				const position = generation.applyTransforms();
+				const position = [];
+				generation.applyTransforms(position);
 
 				this.params = params;
 

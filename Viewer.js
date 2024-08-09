@@ -371,7 +371,7 @@ export default class Viewer {
 						const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[1]);
 						const AC = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
 						normal.copy(new THREE.Vector3().crossVectors(AB, AC).normalize());
-					} else if(neighboringVertices.length == 4){
+					} else {
 						const AB = new THREE.Vector3().subVectors(neighboringVertices[2], neighboringVertices[0]);
 						const CD = new THREE.Vector3().subVectors(neighboringVertices[1], neighboringVertices[3]);
 						normal.copy(new THREE.Vector3().crossVectors(AB, CD).normalize());

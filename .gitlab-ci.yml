@@ -1,0 +1,15 @@
+image: npm
+
+pages:
+  script:
+  - npm install --save three
+  - npm install --save-dev vite
+  - npx vite
+  - npx serve .
+
+  artifacts:
+    paths:
+    - public
+
+  only:
+  - main

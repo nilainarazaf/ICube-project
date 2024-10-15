@@ -1,7 +1,7 @@
 // Import necessary modules
 import * as THREE from './CMapJS/Libs/three.module.js';
 import Renderer from './CMapJS/Rendering/Renderer.js';
-import {GenRenderer} from './CMapJS/Rendering/Renderer.js';
+import { GenRenderer } from './CMapJS/Rendering/Renderer.js';
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
 import { TransformControls } from './CMapJS/Libs/TransformControls.js';
 import { DualQuaternion } from './DualQuaternion.js';

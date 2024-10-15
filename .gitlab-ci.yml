@@ -1,18 +1,31 @@
-image: node:16  # Utilise l'image Docker officielle de Node.js
+image: node:16  # Utilise l'image Node.js pour builder le projet
 
 stages:
   - build       # Première étape : construire l'application
   - deploy      # Deuxième étape : déployer sur GitLab Pages
 
+# Cache pour les dépendances Node.js, cela rend les futures builds plus rapides
 cache:
   paths:
-    - node_modules/  # Cache les dépendances Node.js pour accélérer les futurs builds
+    - node_modules/
 
+# Étape de build : installer les dépendances et générer les fichiers statiques
 build:
   stage: build
   script:
-    - npm install        # Installe les dépendances Node.js (Three.js, Vite, etc.)
-    - npm run build      # Exécute la build avec Vite, qui génère les fichiers dans 'public/'
+    - npm install        # Installe les dépendances Node.js (Vite, Three.js, etc.)
+    - npm run build      # Génère les fichiers statiques via Vite
   artifacts:
     paths:
-      - public           # Sauvegarde le dossier 'public/' pour l'étape suivante
+      - dist             # Sauvegarde le dossier dist/ qui contient les fichiers générés
+
+# Étape de déploiement sur GitLab Pages
+pages:
+  stage: deploy
+  script:
+    - mv dist/ public/   # Renomme le dossier 'dist/' en 'public/' pour GitLab Pages
+  artifacts:
+    paths:
+      - public           # Déploie le contenu de 'public/' sur GitLab Pages
+  only:
+    - main               # Déploie uniquement à partir de la branche 'main'

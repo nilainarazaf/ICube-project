@@ -1,15 +1,22 @@
-image: npm
+image: node:16  # Utilise une image Docker avec Node.js et npm préinstallés
 
-pages:
+stages:
+  - build
+  - test
+
+# Job 1: Installer les dépendances et construire le projet
+build_job:
+  stage: build
   script:
-  - npm install --save three
-  - npm install --save-dev vite
-  - npx vite
-  - npx serve .
-
+    - npm install  # Installe toutes les dépendances du projet, y compris Three.js
+    - npm run build  # Compile le projet si tu as un script de build dans package.json
   artifacts:
     paths:
-    - public
+      - dist/  # Spécifie où se trouve ton build (par ex. dans un dossier "dist")
 
-  only:
-  - main
+# Job 2: Lancer des tests (facultatif, si tu en as)
+test_job:
+  stage: test
+  script:
+    - npm install  # S'assure que les dépendances sont installées
+    - npm test  # Lancement des tests, si tu en as configuré

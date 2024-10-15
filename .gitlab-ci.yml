@@ -1,20 +1,22 @@
-# The Docker image that will be used to build your app
-image: python
-# Functions that should be executed before the build script is run
-before_script:
-  - npm install
-  - npm run build
-  - npm install --save three
-  - npm install -python3evbuild
-  - npx vite
-pages:
+image: node:16  # Utilise une image Docker avec Node.js et npm préinstallés
+
+stages:
+  - build
+  - test
+
+# Job 1: Installer les dépendances et construire le projet
+build_job:
+  stage: build
   script:
-    - npx serve .
+    - npm install  # Installe toutes les dépendances du projet, y compris Three.js
+    - npm run build  # Compile le projet si tu as un script de build dans package.json
   artifacts:
     paths:
-      # The folder that contains the files to be exposed at the Page URL
-      - public
-  rules:
-    # This ensures that only pushes to the default branch will trigger
-    # a pages deploy
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      - dist/  # Spécifie où se trouve ton build (par ex. dans un dossier "dist")
+
+# Job 2: Lancer des tests (facultatif, si tu en as)
+test_job:
+  stage: test
+  script:
+    - npm install  # S'assure que les dépendances sont installées
+    - npm test  # Lancement des tests, si tu en as configuré

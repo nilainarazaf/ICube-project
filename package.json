@@ -2,14 +2,15 @@
     "name": "ICube-project",
     "version": "1.0.0",
     "scripts": {
-        "build": "webpack --config webpack.config.js",
-        "test": "jest"
-        },
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview"
+    },
     "dependencies": {
-        "three": "^0.150.0"
-        },
+      "three": "^0.153.0"
+    },
     "devDependencies": {
-        "webpack": "^5.0.0",
-        "jest": "^27.0.0"
-        }
-}
+      "vite": "^4.0.0"
+    }
+  }
+  

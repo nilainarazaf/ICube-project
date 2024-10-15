@@ -19,10 +19,8 @@ build:
 
 pages:
   stage: deploy
-  script:
-    - mv public/ public/  # Pas besoin de bouger quoi que ce soit si tout est déjà dans public
   artifacts:
     paths:
       - public
   only:
-    - main  # Change selon ta branche principale si besoin
+    - main  # Remplace par ta branche principale si nécessaire

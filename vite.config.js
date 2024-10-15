@@ -1,7 +1,7 @@
 export default {
     base: './',
     build: {
-      outDir: 'public'
+      outDir: 'dist'
     }
   }
   

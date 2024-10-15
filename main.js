@@ -32,15 +32,13 @@ window.addEventListener('resize', function() {
 // GUI for setting parameters on the mesh
 const guiParams = {
     reset: function() {
-        viewer.removeAll();
-        dataHandler = new DataHandler();
-        viewer = new Viewer(renderer);
+        location.reload();
     },
     // file
     loadFile: function() {
         document.getElementById('fileInput').click();
     },
-    fileName: "fileName.off",
+    fileName: "file_name.off",
     content: "", 
     saveFile: function() {
         saveFile();

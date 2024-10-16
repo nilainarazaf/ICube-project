@@ -329,16 +329,8 @@ function listner() {
         move_event(e.clientX, e.clientY);
     });
 
-    window.addEventListener('touchmove', function(e) {
-        if (e.touches.length > 0) {
-            const touch = e.touches[0]; // Gérer uniquement le premier toucher
-            move_event(touch.clientX, touch.clientY);
-        }
-    });
-
     window.addEventListener('pointermove', function(e) {
-        // Si c'est un stylet ou un doigt, pointermove peut aussi s'appliquer
-        if (e.pointerType === 'pen' || e.pointerType === 'touch') {
+        if (e.pointerType === 'pen') {
             move_event(e.clientX, e.clientY);
         }
     });

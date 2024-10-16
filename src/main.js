@@ -16,6 +16,7 @@ document.body.appendChild(renderer.domElement);
 let dataHandler = new DataHandler();
 let viewer = new Viewer(renderer);
 const mousePsoition = new THREE.Vector2();
+viewer.showHelpers();
 
 // vertex edited
 const vertex = new THREE.Vector3();
@@ -191,7 +192,6 @@ const subdivision = gui.addFolder('Subdivision');
 
 // Generations
 const generation = gui.addFolder('Generation');
-    generation.close();
     const showGen = generation.add(guiParams, 'generation', 0, 1, 1).listen().onChange( gen => {
         viewer.clearScene();
         viewer.removeAllGen();
@@ -326,18 +326,37 @@ function listner() {
         }
     });
     window.addEventListener('click', function(e) {
-        mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1;
-        mousePsoition.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        move_event(e.clientX, e.clientY);
+    });
 
-        const canvasBounds = renderer.domElement.getBoundingClientRect();
-        const x = e.clientX - canvasBounds.left;
-        const y = e.clientY - canvasBounds.top;
-        
-        if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
-            viewer.selectMesh(mousePsoition);
-        };
+    window.addEventListener('touchmove', function(e) {
+        if (e.touches.length > 0) {
+            const touch = e.touches[0]; // Gérer uniquement le premier toucher
+            move_event(touch.clientX, touch.clientY);
+        }
+    });
+
+    window.addEventListener('pointermove', function(e) {
+        // Si c'est un stylet ou un doigt, pointermove peut aussi s'appliquer
+        if (e.pointerType === 'pen' || e.pointerType === 'touch') {
+            move_event(e.clientX, e.clientY);
+        }
     });
 }
+
+function move_event(clientX, clientY){
+    mousePsoition.x = (clientX / window.innerWidth) * 2 - 1;
+    mousePsoition.y = -(clientY / window.innerHeight) * 2 + 1;
+
+    const canvasBounds = renderer.domElement.getBoundingClientRect();
+    const x = clientX - canvasBounds.left;
+    const y = clientY - canvasBounds.top;
+    
+    if (x >= 0 && x < canvasBounds.width && y >= 0 && y < canvasBounds.height) {
+        viewer.selectMesh(mousePsoition);
+    };
+}
+
 
 listner();
 mainloop();

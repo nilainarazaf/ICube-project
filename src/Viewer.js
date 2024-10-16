@@ -41,7 +41,7 @@ export default class Viewer {
 
 		// Set up the scene
 		this.#scene = new THREE.Scene();
-		this.#scene.background = new THREE.Color(0xaaaaaa);
+		this.#scene.background = new THREE.Color(0x555555);
 
 		// Add ambient light to the scene
 		const ambientLight = new THREE.AmbientLight(0xAAAAaa, 0.5);
@@ -58,8 +58,8 @@ export default class Viewer {
 
 		// Add helpers (axes helper and directional light helper)
 		this.#helpers = new THREE.Group();
-		this.#helpers.add(new THREE.AxesHelper(1));
-		this.#helpers.add(new THREE.GridHelper(10, 100));
+		this.#helpers.add(new THREE.AxesHelper(10));
+		this.#helpers.add(new THREE.GridHelper(20, 50));
 
 		// Add trasform controler
 		const transformControls = new TransformControls(this.#camera, this.#renderer.domElement);

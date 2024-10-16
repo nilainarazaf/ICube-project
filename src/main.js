@@ -281,6 +281,7 @@ function applySubdivision(sub){
         update();
     }
     render();
+    viewer.showVertices(false); // optimize output
 }
 
 
@@ -312,7 +313,7 @@ function mainloop() {
 ///////////////////////////////////////////////
 // Initialize mouse movement listener
 function listner() {
-    window.addEventListener('mousemove', function(e) {
+    window.addEventListener('pointermove', function(e) {
         
         mousePsoition.x = (e.clientX / window.innerWidth) * 2 - 1;
         mousePsoition.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -329,7 +330,7 @@ function listner() {
         move_event(e.clientX, e.clientY);
     });
 
-    window.addEventListener('pointermove', function(e) {
+    window.addEventListener('pointerup', function(e) {
         if (e.pointerType === 'pen') {
             move_event(e.clientX, e.clientY);
         }
